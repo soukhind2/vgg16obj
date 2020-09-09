@@ -23,54 +23,33 @@ from keras.layers.normalization import BatchNormalization
 import math
 
 #%%
+model = VGG16(weights='imagenet',
+                     include_top=False)
 
-img_rows, img_cols = 224, 224
-
-shape_ord = (img_rows, img_cols, 3)
-
-
-bottom_model = VGG16(weights='imagenet',
-                     include_top=False,
-                     input_tensor=Input(shape_ord))
-
-for layer in bottom_model.layers:
+for layer in model.layers:
         layer.trainable = False  # freeze layer
-        
-x = Flatten(input_shape=bottom_model.output.shape)(bottom_model.output)
-x = Dense(100, activation='relu', name='ft_fc1')(x)
-x = Dropout(0.5)(x)
-x = Dense(50,activation= 'relu',name= 'ft_fc2')(x)
-predictions = Dense(3, activation = 'softmax')(x)
-
-model = Model(inputs=bottom_model.input, outputs=predictions)
-model.summary()
-#%% compile the model
-model.compile(optimizer=Adam(lr = 0.001),
-              loss='categorical_crossentropy', 
-              metrics=['accuracy'])
 
 #%%
 batch_size = 32
-datagen = ImageDataGenerator()
-train_it = datagen.flow_from_directory('stim/',
+datagen = ImageDataGenerator(rescale=1.0/255.0)
+train_it = datagen.flow_from_directory('catvsdog/train/',
                                        batch_size = batch_size, 
                                        target_size = (224, 224),
-                                       class_mode = 'categorical',
+                                       class_mode = 'binary',
                                        )
 
-val_it = datagen.flow_from_directory('val/',
+val_it = datagen.flow_from_directory('catvsdog/val/',
                                        batch_size = batch_size, 
                                        target_size = (224, 224),
-                                       class_mode = 'categorical',
+                                       class_mode = 'binary',
                                        )
 
-test_it = datagen.flow_from_directory('test/',
+test_it = datagen.flow_from_directory('catvsdog/test/',
                                        batch_size = batch_size, 
                                        target_size = (224, 224),
-                                       class_mode = 'categorical',
+                                       class_mode = 'binary',
                                        )
 
-num_classes = 3
 nb_train_samples = len(train_it.filenames) 
 nb_val_samples = len(val_it.filenames) 
 nb_test_samples = len(test_it.filenames) 
@@ -80,14 +59,6 @@ nb_test_samples = len(test_it.filenames)
 predict_size_train = int(math.ceil(nb_train_samples / batch_size)) 
 predict_size_val = int(math.ceil(nb_val_samples / batch_size)) 
 predict_size_test = int(math.ceil(nb_test_samples / batch_size))
-
-
-#%%
-es = EarlyStopping(monitor='val_loss', mode='min', verbose=1)
-history = model.fit_generator(train_it,
-          epochs=30,
-          validation_data=val_it,
-          verbose = 1, callbacks = [es])
 
 
 #%%
@@ -104,9 +75,9 @@ features_test = model.predict_generator(test_it, predict_size_test)
 print(f'Test Time: {time.time() - start}')
 
      
-np.save('features_train' , features_train)
-np.save('features_val', features_val)
-np.save('features_test', features_test)
+np.save('features_train_dc' , features_train)
+np.save('features_val_dc', features_val)
+np.save('features_test_dc', features_test)
 #%%
 
 epochs = 30
@@ -132,8 +103,8 @@ model = Sequential()
 
 model.add(Flatten(input_shape=train_data.shape[1:])) 
 model.add(Dense(4096, activation='relu')) 
-model.add(Dropout(0.5)) 
-model.add(Dense(1024, activation='relu')) 
+model.add(Dense(4096, activation='relu')) 
+
 model.add(Dense(3, activation='softmax'))
 
 model.compile(optimizer= Adam(lr=0.001),
@@ -145,7 +116,7 @@ history = model.fit(train_data, train_labels,
           epochs=epochs,
           batch_size=batch_size,
           validation_data=(val_data, val_labels),
-          verbose = 1, callbacks = [])
+          verbose = 1, callbacks = [es])
 model.save_weights('top_weights')
 
 #%%

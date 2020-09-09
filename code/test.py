@@ -8,7 +8,7 @@ Created on Thu Sep  3 19:45:58 2020
 import numpy as np
 import os
 import time
-os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+
 from keras.applications.vgg16 import VGG16
 from keras.preprocessing.image import ImageDataGenerator
 import math
@@ -18,7 +18,12 @@ model = VGG16(weights='imagenet',
               include_top=False)
 #%%
 batch_size = 32
-datagen = ImageDataGenerator()
+datagen = ImageDataGenerator(rescale = 1./255,  
+          zoom_range = 0.1,
+          width_shift_range = 0.2, 
+          height_shift_range = 0.2,
+          horizontal_flip = True,
+          fill_mode ='nearest')
 train_it = datagen.flow_from_directory('stim/',
                                        batch_size = batch_size, 
                                        target_size = (224, 224),
@@ -49,21 +54,58 @@ predict_size_val = int(math.ceil(nb_val_samples / batch_size))
 predict_size_test = int(math.ceil(nb_test_samples / batch_size)) 
 #%%
 start = time.time()
-features_train = model.predict_generator(train_it, predict_size_train) 
+features_train = model.predict(train_it) 
 print(f'Train Time: {time.time() - start}')
 
 start = time.time()
-features_val = model.predict_generator(val_it, predict_size_val) 
+features_val = model.predict(val_it) 
 print(f'Val Time: {time.time() - start}')
 
 start = time.time()
-features_test = model.predict_generator(test_it, predict_size_test) 
+features_test = model.predict(test_it) 
 print(f'Test Time: {time.time() - start}')
 
      
 np.save('features_train' , features_train)
 np.save('features_val', features_val)
 np.save('features_test', features_test)
+#%%
+from keras.preprocessing.image import load_img, img_to_array
+from keras.applications.vgg16 import preprocess_input
+
+def convertimgs(path,data) :
+    for dirName, subdir, files in os.walk(path):
+        for filename in sorted(files):
+            if filename == '.DS_Store':
+                continue
+            ds = load_img(path +'/' + filename,target_size = (224,224))
+            im = img_to_array(ds)
+            #im = im.reshape((1, im.shape[0], im.shape[1], im.shape[2]))
+            im = preprocess_input(im)
+            data.append(im) 
+    return data
+
+
+train_it = []
+train_it = convertimgs('stim/faces',train_it)
+train_it = convertimgs('stim/Scenes',train_it)
+train_it = convertimgs('stim/objects',train_it)
+
+val_it = []
+val_it = convertimgs('val/faces',val_it)
+val_it = convertimgs('val/scenes',val_it)
+val_it = convertimgs('val/objects',val_it)
+
+test_it = []
+test_it = convertimgs('test/faces',test_it)
+test_it = convertimgs('test/scenes',test_it)
+test_it = convertimgs('test/objects',test_it)
+
+train_it = np.array(train_it)
+val_it = np.array(val_it)
+test_it = np.array(test_it)
+
+
 #%%
 from keras.layers import Flatten,Dense,Dropout
 from keras.models import Sequential
@@ -74,18 +116,18 @@ epochs = 30
 
 train_data = np.load('features_train.npy')
 #train_data = features_train
-train_labels = train_it.classes
+train_labels = [0] * 400 + [1]*400 + [2] * 400
 train_labels = to_categorical(train_labels, 3)
 
 
 val_data = np.load('features_val.npy')
 #val_data = features_val
-val_labels = val_it.classes
+val_labels = [0] * 40 + [1]*40 + [2] * 40
 val_labels = to_categorical(val_labels, 3)
 
 test_data = np.load('features_test.npy')
 #test_data = features_test
-test_labels = test_it.classes
+test_labels = [0] * 40 + [1]*40 + [2] * 40
 test_labels = to_categorical(test_labels, 3)
 
 
@@ -97,16 +139,16 @@ model.add(Dropout(0.5))
 model.add(Dense(1024, activation='relu')) 
 model.add(Dense(3, activation='softmax'))
 
-model.compile(optimizer= Adam(lr=0.001),
+model.compile(optimizer= Adam(lr=1e-5),
               loss='binary_crossentropy',
               metrics=['accuracy'])
 es = EarlyStopping(monitor='val_loss', mode='min', verbose=1)
 
 history = model.fit(train_data, train_labels,
           epochs=epochs,
-          batch_size=batch_size,
+          batch_size=64,
           validation_data=(val_data, val_labels),
-          verbose = 1, callbacks = [])
+          verbose = 1, callbacks = [es])
 model.save_weights('top_weights',overwrite = True)
 
 #%%
@@ -115,6 +157,7 @@ print(out)
 #%%
 pred = np.round(model.predict(test_data),0)
 print('rounded test labels',pred)
+
 #%%
 from sklearn import metrics
 classes = ['faces','object','scene']
@@ -125,7 +168,7 @@ print(metric)
 import itertools
 import pandas as pd
 from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pltzz
 categorical_test_labels = pd.DataFrame(test_labels).idxmax(axis=1)
 categorical_preds = pd.DataFrame(pred).idxmax(axis=1)
 confusion_matrix= confusion_matrix(categorical_test_labels, categorical_preds)
