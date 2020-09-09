@@ -9,10 +9,23 @@ import numpy as np
 import os
 import time
 
-from keras.applications.vgg16 import VGG16
-from keras.preprocessing.image import ImageDataGenerator
-import math
+from keras.applications.vgg16 import VGG16,preprocess_input
+from keras.preprocessing.image import ImageDataGenerator,load_img, img_to_array
+from keras.layers import Flatten,Dense,Dropout
+from keras.models import Sequential
+from keras.utils.np_utils import to_categorical
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
 
+
+import math
+import itertools
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import confusion_matrix
+
+from tools import plot_tools as pt
 #%%
 model = VGG16(weights='imagenet',
               include_top=False)
@@ -55,8 +68,7 @@ predict_size_val = int(math.ceil(nb_val_samples / batch_size))
 predict_size_test = int(math.ceil(nb_test_samples / batch_size))'''
 #%%
 
-from keras.preprocessing.image import load_img, img_to_array
-from keras.applications.vgg16 import preprocess_input
+
 
 def convertimgs(path,data) :
     for dirName, subdir, files in os.walk(path):
@@ -108,11 +120,7 @@ np.save('features_train' , features_train)
 np.save('features_val', features_val)
 np.save('features_test', features_test)
 #%%
-from keras.layers import Flatten,Dense,Dropout
-from keras.models import Sequential
-from keras.utils.np_utils import to_categorical
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping
+
 epochs = 30
 
 train_data = np.load('features_train.npy')
@@ -166,69 +174,11 @@ metric = metrics.classification_report(test_labels,pred,target_names = classes)
 print(metric)
 
 #%%
-import itertools
-import pandas as pd
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
+
 categorical_test_labels = pd.DataFrame(test_labels).idxmax(axis=1)
 categorical_preds = pd.DataFrame(pred).idxmax(axis=1)
-confusion_matrix= confusion_matrix(categorical_test_labels, categorical_preds)
+confusion_matrix = confusion_matrix(categorical_test_labels, categorical_preds)
 
-#To get better visual of the confusion matrix:
-def plot_confusion_matrix(cm, classes,
-   normalize=False,
-   title='Confusion matrix',
-   cmap=plt.cm.Blues):
- 
-#Add Normalization Option
- 
-   if normalize:
-     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-     print('Normalized confusion matrix')
-   else:
-     print('Confusion matrix, without normalization')
- 
-# print(cm)
- 
-   plt.imshow(cm, interpolation='nearest', cmap=cmap)
-   plt.title(title)
-   plt.colorbar()
-   tick_marks = np.arange(len(classes))
-   plt.xticks(tick_marks, classes, rotation=45)
-   plt.yticks(tick_marks, classes)
- 
-   fmt = '.2f' if normalize else 'd'
-   thresh = cm.max() / 2.
-   for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-      plt.text(j, i, format(cm[i, j], fmt), horizontalalignment='center', color='white' if cm[i, j] > thresh else 'black')
- 
-   plt.tight_layout()
-   plt.ylabel('True label')
-   plt.xlabel('Predicted label') 
-                                       
-plot_confusion_matrix(confusion_matrix,classes,normalize = False)
+pt.plot_confusion_matrix(confusion_matrix,classes,normalize = False)
 #%%
-import matplotlib.pyplot as plt
-#Graphing our training and validation
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(len(acc))
-plt.plot(epochs, acc, 'r', label='Training acc')
-plt.plot(epochs, val_acc, 'b', label='Validation acc')
-plt.title('Training and validation accuracy')
-plt.ylabel('accuracy') 
-plt.xlabel('epoch')
-plt.legend()
-plt.figure()
-plt.plot(epochs, loss, 'r', label='Training loss')
-plt.plot(epochs, val_loss, 'b', label='Validation loss')
-plt.title('Training and validation loss')
-plt.ylabel('loss') 
-plt.xlabel('epoch')
-plt.legend()
-plt.show()
-
-
 
