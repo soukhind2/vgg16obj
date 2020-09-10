@@ -177,8 +177,8 @@ print(metric)
 
 categorical_test_labels = pd.DataFrame(test_labels).idxmax(axis=1)
 categorical_preds = pd.DataFrame(pred).idxmax(axis=1)
-confusion_matrix = confusion_matrix(categorical_test_labels, categorical_preds)
+cm = confusion_matrix(categorical_test_labels, categorical_preds)
 
-pt.plot_confusion_matrix(confusion_matrix,classes,normalize = False)
+pt.plot_confusion_matrix(cm,classes,normalize = False)
 #%%
-
+pt.plot_metrics(history)

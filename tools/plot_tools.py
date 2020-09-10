@@ -11,7 +11,7 @@ import numpy as np
 import itertools
 
 #Graphing our training and validation
-def plot_metrics(history):
+def plot_metrics(history,save = False):
     acc = history.history['accuracy']
     val_acc = history.history['val_accuracy']
     loss = history.history['loss']
@@ -23,6 +23,9 @@ def plot_metrics(history):
     plt.ylabel('accuracy') 
     plt.xlabel('epoch')
     plt.legend()
+    if save:
+        plt.savefig("metrics1.png",dpi = 600,bbox_inches = 'tight')
+
     plt.figure()
     plt.plot(epochs, loss, 'r', label='Training loss')
     plt.plot(epochs, val_loss, 'b', label='Validation loss')
@@ -31,13 +34,17 @@ def plot_metrics(history):
     plt.xlabel('epoch')
     plt.legend()
     plt.show()
+    if save:
+        plt.savefig("metrics2.png",dpi = 600,bbox_inches = 'tight')
+    
     
 
 #To get better visual of the confusion matrix:
 def plot_confusion_matrix(cm, classes,
    normalize=False,
    title='Confusion matrix',
-   cmap=plt.cm.Blues):
+   cmap=plt.cm.Blues,
+   save = False):
  
     #Add Normalization Option
  
@@ -63,6 +70,8 @@ def plot_confusion_matrix(cm, classes,
    plt.tight_layout()
    plt.ylabel('True label')
    plt.xlabel('Predicted label') 
+   if save:
+        plt.savefig("metrics2.png",dpi = 600,bbox_inches = 'tight')
                                        
 
     
