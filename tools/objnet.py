@@ -50,18 +50,18 @@ class modelarch():
         
         return o2
     
-    def build_stem(self,inputs):
+    def build_stem(self,s,inputs):
         
         x = Flatten()(inputs)
-        x = Dense(4096, activation="relu")(x)
-        x = Dense(4096, activation="relu")(x)
         
+        for _,j in enumerate(s):
+            x = Dense(j, activation="relu")(x)        
         return x
     
-    def build_full_model(self,input_shape,b1_len,b2_len):
+    def build_full_model(self,input_shape,stem_len,b1_len,b2_len):
         
         inputs = Input(shape = input_shape)
-        stem = self.build_stem(inputs)
+        stem = self.build_stem(stem_len,inputs)
         b1_out = self.build_branch1(stem,b1_len)
         b2_out = self.build_branch2(stem,b2_len)
         
@@ -77,8 +77,8 @@ m = modelarch().build_full_model([7,7,512] ,
                                  b1_len = [4096,4096],
                                  b2_len = [4096,4096]
                                  )
-'''
 
+'''
 
 
 
