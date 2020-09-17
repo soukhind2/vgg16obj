@@ -31,8 +31,8 @@ class modelarch():
         for i,j in enumerate(w):
             if i == 0:
                 b1 = Dense(j, activation="relu")(inputs)
-                
-            b1 = Dense(j, activation="relu")(b1)
+            else:
+                b1 = Dense(j, activation="relu")(b1)
                 
         o1 = Dense(num_c,activation="softmax",name="branch1")(b1)
         
@@ -43,8 +43,8 @@ class modelarch():
         for i,j in enumerate(w):
             if i == 0:
                 b2 = Dense(j, activation="relu")(inputs)
-                
-            b2 = Dense(j, activation="relu")(b2)
+            else:
+                b2 = Dense(j, activation="relu")(b2)
                 
         o2 = Dense(num_c,activation="softmax",name="branch2")(b2)
         
