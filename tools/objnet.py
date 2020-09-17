@@ -71,15 +71,13 @@ class modelarch():
         
         return model
     
-
+'''
 m = modelarch().build_full_model([7,7,512] ,
                                  stem_len = [4096,4096],
                                  b1_len = [4096,4096],
                                  b2_len = [4096,4096]
                                  )
-
-
-    #%%
+'''
 
 
 
