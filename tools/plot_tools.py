@@ -72,6 +72,52 @@ def plot_confusion_matrix(cm, classes,
    plt.xlabel('Predicted label') 
    if save:
         plt.savefig("metrics2.png",dpi = 600,bbox_inches = 'tight')
+        
+        
+def plot_feat_maps(layer_names,intermediate_activations,
+                   images_per_row = 8,
+                   max_images = 8):
+    
+    images_per_row = images_per_row
+    max_images = max_images
+    # Now let's display our feature maps
+    for layer_name, layer_activation in zip(layer_names, intermediate_activations):
+        # This is the number of features in the feature map
+        n_features = layer_activation.shape[-1]
+        n_features = min(n_features, max_images)
+    
+        # The feature map has shape (1, size, size, n_features)
+        size = layer_activation.shape[1]
+    
+        # We will tile the activation channels in this matrix
+        n_cols = n_features // images_per_row
+        display_grid = np.zeros((size * n_cols, images_per_row * size))
+    
+        # We'll tile each filter into this big horizontal grid
+        for col in range(n_cols):
+            for row in range(images_per_row):
+                channel_image = layer_activation[0,
+                                                 :, :,
+                                                 col * images_per_row + row]
+                # Post-process the feature to make it visually palatable
+                channel_image -= channel_image.mean()
+                channel_image /= channel_image.std()
+                channel_image *= 64
+                channel_image += 128
+                channel_image = np.clip(channel_image, 0, 255).astype('uint8')
+                display_grid[col * size : (col + 1) * size,
+                             row * size : (row + 1) * size] = channel_image
+    
+        # Display the grid
+        scale = 2. / size
+        plt.figure(figsize=(scale * display_grid.shape[1],
+                            scale * display_grid.shape[0]))
+        plt.axis('off')
+        plt.title(layer_name)
+        plt.grid(False)
+        plt.imshow(display_grid, aspect='auto', cmap='viridis')
+        
+    plt.show()
                                        
 
     
