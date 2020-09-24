@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools
 
-#Graphing our training and validation
+#Graphing the training and validation
 def plot_metrics(history,save = False):
     acc = history.history['accuracy']
     val_acc = history.history['val_accuracy']
@@ -73,7 +73,7 @@ def plot_confusion_matrix(cm, classes,
    if save:
         plt.savefig("metrics2.png",dpi = 600,bbox_inches = 'tight')
         
-        
+#To visualize and plot the feature maps for reference
 def plot_feat_maps(layer_names,intermediate_activations,
                    images_per_row = 8,
                    max_images = 8):
@@ -118,7 +118,37 @@ def plot_feat_maps(layer_names,intermediate_activations,
         plt.imshow(display_grid, aspect='auto', cmap='viridis')
         
     plt.show()
-                                       
+               
+# To plot  tuning curves of the categories
+def plot_tun_curves(data,layers,maps,figsize = (15,4)):
+  if len(layers) != len(maps):
+    raise ValueError('Sizes of layers and maps do not match')
+  
+  plot_data = np.zeros((len(data),len(layers)))
+  #Load data into plotting format
+  for i in range(len(data)):
+    for iter in range(len(layers)):
+      plot_data[i,iter] = data[i][layers[iter]][maps[iter]]
+
+  plt.style.use('default')
+  fig = plt.figure(figsize = figsize)
+  ax = fig.add_subplot(111)    # The big subplot
+
+  # Turn off axis lines and ticks of the big subplot
+  ax.spines['top'].set_color('none')
+  ax.spines['bottom'].set_color('none')
+  ax.spines['left'].set_color('none')
+  ax.spines['right'].set_color('none')
+  ax.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
+  
+  for p in range(len(layers)):
+    ax1 = fig.add_subplot(1,len(layers),p+1)
+    ax1.plot(plot_data[:,p])
+    ax1.set_title('Layer: ' + str(layers[p]) + ', Map: ' + str(maps[p]))
+    ax1.set_xticklabels(np.arange(0,7))
+  ax.set_ylabel('Tuning Value',size = 15)
+  ax.set_xlabel('Object Category Number',size = 15)
+  return fig 
 
     
     
