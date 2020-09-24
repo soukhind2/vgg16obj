@@ -36,7 +36,10 @@ def calc_std(tun_value,avg_tun_value):
     for img in range(len(tun_value)):
       tensor_tun = tun_value[img]
       for layer in range(len(tensor_tun)):
-        for mapa in range(len(tensor_tun[layer])):
-          std_tun_value[layer][mapa] += (tensor_tun[layer][mapa] - avg_tun_value[layer][mapa])**2
+        for map in range(len(tensor_tun[layer])):
+          std_tun_value[layer][map] += (tensor_tun[layer][map] - avg_tun_value[layer][map])**2
           
     std_tun_value = [[(item / len(tun_value))**(1/2) for item in subl] for subl in avg_tun_value]
+    
+    return std_tun_value
+    
