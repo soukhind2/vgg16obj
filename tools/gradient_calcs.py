@@ -9,6 +9,7 @@ import tensorflow as tf
 from keras.models import Model
 from keras.layers import Flatten, Dense, Dropout
 from keras.layers import Input
+import numpy as np
 
 def make_gradcam_heatmap(
     img_array, model, layer_name, classifier_layer_names,top_model):
