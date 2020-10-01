@@ -6,6 +6,9 @@ Created on Thu Oct  1 01:27:25 2020
 @author: soukhind
 """
 import tensorflow as tf
+from keras.models import Model
+from keras.layers import Flatten, Dense, Dropout
+from keras.layers import Input
 
 def make_gradcam_heatmap(
     img_array, model, layer_name, classifier_layer_names,top_model):
