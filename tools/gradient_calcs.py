@@ -63,3 +63,26 @@ def make_gradcam_heatmap(
     # For visualization purpose, we will also normalize the heatmap between 0 & 1
     #heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
     return pooled_grads,heatmap
+
+def reduce_catgrad_mean(data):
+  reduce_data = [[0 for item in subl] for subl in data[0]]
+  for img in range(len(data)):
+    for layer in range(len(data[0])):
+      for map in range(len(data[0][layer])):
+        reduce_data[layer][map] += data[img][layer][map]/len(data)
+  return reduce_data
+
+def calc_avg_gradcam(data,model,top_model):
+  grad_cat = [[] for i in range(len(data))] #Initialize gradients for each image in cat
+  for img in range(len(data)): # Parse each image
+    for idx,layer_name in enumerate(layer_names_all):
+      if 'conv' in layer_name:
+        classifier_layer_names = layer_names_all[idx + 1:] + top_layer_names
+        img_tensor = data[img].reshape([1,224,224,3])
+        plt.imshow(data[img])
+        g,h = gc.make_gradcam_heatmap(img_tensor,model,layer_name,classifier_layer_names,top_model)
+        grad_cat[img].append(g) #grads has dimensions of layers x no of maps in each layer
+    print(img)
+  grads = reduce_catgrad_mean(grad_cat) # Reduce to the mean of all the images in cat
+  del grad_cat
+  return grads
