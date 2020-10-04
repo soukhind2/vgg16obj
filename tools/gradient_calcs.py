@@ -80,7 +80,7 @@ def calc_avg_gradcam(data,model,top_model):
         classifier_layer_names = layer_names_all[idx + 1:] + top_layer_names
         img_tensor = data[img].reshape([1,224,224,3])
         plt.imshow(data[img])
-        g,h = gc.make_gradcam_heatmap(img_tensor,model,layer_name,classifier_layer_names,top_model)
+        g,h = make_gradcam_heatmap(img_tensor,model,layer_name,classifier_layer_names,top_model)
         grad_cat[img].append(g) #grads has dimensions of layers x no of maps in each layer
     print(img)
   grads = reduce_catgrad_mean(grad_cat) # Reduce to the mean of all the images in cat
