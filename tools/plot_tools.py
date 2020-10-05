@@ -120,7 +120,7 @@ def plot_feat_maps(layer_names,intermediate_activations,
     plt.show()
                
 # To plot  tuning curves of the categories
-def plot_tun_curves(data,layers,maps,figsize = (15,4)):
+def plot_curves(data,layers,maps,figsize = (15,4)):
   if len(layers) != len(maps):
     raise ValueError('Sizes of layers and maps do not match')
   
@@ -152,3 +152,61 @@ def plot_tun_curves(data,layers,maps,figsize = (15,4)):
 
     
     
+def plot_both_curves(data1,data2,layers,maps,figsize = (15,4)):
+  if len(layers) != len(maps):
+    raise ValueError('Sizes of layers and maps do not match')
+  
+  plot_data1 = np.zeros((len(data1),len(layers)))
+  #Load data into plotting format
+  for i in range(len(data1)):
+    for iter in range(len(layers)):
+      plot_data1[i,iter] = data1[i][layers[iter]][maps[iter]]
+
+  plot_data2 = np.zeros((len(data1),len(layers)))
+  #Load data into plotting format
+  for i in range(len(data1)):
+    for iter in range(len(layers)):
+      plot_data2[i,iter] = data2[i][layers[iter]][maps[iter]]
+
+  plt.style.use('default')
+  fig = plt.figure(figsize = figsize)
+  ax = fig.add_subplot(111)    # The big subplot
+
+  # Turn off axis lines and ticks of the big subplot
+  ax.spines['top'].set_color('none')
+  ax.spines['bottom'].set_color('none')
+  ax.spines['left'].set_color('none')
+  ax.spines['right'].set_color('none')
+  ax.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
+  ax_2 = ax.twinx()
+  ax_2.set_ylabel('Gradient Value',size = 15,color = 'green')
+  ax_2.spines['top'].set_color('none')
+  ax_2.spines['bottom'].set_color('none')
+  ax_2.spines['left'].set_color('none')
+  ax_2.spines['right'].set_color('none')
+  ax_2.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
+
+  for p in range(len(layers)):
+    ax1 = fig.add_subplot(1,len(layers),p+1)
+    ax1.plot(plot_data1[:,p],'r')
+    ax1.set_title('Layer: ' + str(layers[p]) + ', Map: ' + str(maps[p]))
+    ax1.set_xticklabels(np.arange(0,7))
+
+    ax2 = ax1.twinx()
+    ax2.plot(plot_data2[:,p],'g')
+  ax.set_ylabel('Tuning Value',size = 15,color = 'red')
+  ax.set_xlabel('Object Category Number',size = 15)
+  
+  return fig 
+
+def plot_corr(d1,d2,figsize = (20,8)):
+  import seaborn as sns
+  sns.set(style="white",rc={"lines.linewidth": 0.7})
+  plt.figure(figsize = figsize)
+  ax = sns.pointplot(data = d1 , color = 'mediumseagreen', errorwidth = 0.1 , capsize = 0.2)
+  ax = sns.pointplot(data = d2 , color = 'orangered', errorwidth = 0.1 , capsize = 0.2)
+  ax.text(0,0.4,'Regular',color = 'orangered',fontsize = 30)
+  ax.text(0,0.36,'Shuffled',color = 'mediumseagreen',fontsize = 30)
+  ax.set_xlabel('Layer',size = 20)
+  ax.set_xticklabels(np.arange(1,14))
+  ax.set_ylabel('Pearson Corr. Coeff.',size = 20)
