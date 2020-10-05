@@ -151,8 +151,8 @@ def plot_curves(data,layers,maps,figsize = (15,4)):
   return fig 
 
     
-    
-def plot_both_curves(data1,data2,layers,maps,figsize = (15,4)):
+from vgg16obj.tools import stats
+def plot_both_curves(data1,data2,layers,maps,corrcoef = False,figsize = (20,5)):
   if len(layers) != len(maps):
     raise ValueError('Sizes of layers and maps do not match')
   
@@ -167,6 +167,11 @@ def plot_both_curves(data1,data2,layers,maps,figsize = (15,4)):
   for i in range(len(data1)):
     for iter in range(len(layers)):
       plot_data2[i,iter] = data2[i][layers[iter]][maps[iter]]
+  
+  if corrcoef:
+    corr = np.zeros(len(layers))
+    for i in range(len(layers)):
+      corr[i] = stats.calc_corrcoef(data1,data2,layers[i],maps[i])
 
   plt.style.use('default')
   fig = plt.figure(figsize = figsize)
@@ -177,26 +182,29 @@ def plot_both_curves(data1,data2,layers,maps,figsize = (15,4)):
   ax.spines['bottom'].set_color('none')
   ax.spines['left'].set_color('none')
   ax.spines['right'].set_color('none')
-  ax.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
+  ax.tick_params(labelcolor='w', top=False,
+                 bottom=False, left=False, right=False)
   ax_2 = ax.twinx()
-  ax_2.set_ylabel('Gradient Value',size = 15,color = 'green')
+
   ax_2.spines['top'].set_color('none')
   ax_2.spines['bottom'].set_color('none')
   ax_2.spines['left'].set_color('none')
   ax_2.spines['right'].set_color('none')
-  ax_2.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
+  ax_2.tick_params(labelcolor='w', top=False,
+                   bottom=False, left=False, right=False)
 
   for p in range(len(layers)):
     ax1 = fig.add_subplot(1,len(layers),p+1)
     ax1.plot(plot_data1[:,p],'r')
-    ax1.set_title('Layer: ' + str(layers[p]) + ', Map: ' + str(maps[p]))
+    ax1.set_title('Layer: ' + str(layers[p] + 1 ) + ', Map: ' + 
+                  str(maps[p] + 1) + '\n \u03C1: ' + str(corr[p]),size = 15)
     ax1.set_xticklabels(np.arange(0,7))
-
     ax2 = ax1.twinx()
     ax2.plot(plot_data2[:,p],'g')
   ax.set_ylabel('Tuning Value',size = 15,color = 'red')
   ax.set_xlabel('Object Category Number',size = 15)
-  
+  ax_2.set_ylabel('Gradient Value',size = 15,color = 'green')
+
   return fig 
 
 def plot_corr(d1,d2,figsize = (20,8)):
