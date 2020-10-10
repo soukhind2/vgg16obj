@@ -112,7 +112,7 @@ def avg_accuracy(data_train,train_labels,
             start = time.time()
             f_test = model.predict(test_it)
             print(f'Test Time: {time.time() - start}')
-            es = EarlyStopping(monitor='val_loss', mode='min', verbose=1)
+            es = EarlyStopping(monitor='loss', mode='min', verbose=1)
       
             history = top_model.fit(x = f_train,  y = train_labels,
                     epochs=epochs,

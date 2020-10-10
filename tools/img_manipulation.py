@@ -4,6 +4,10 @@
 Created on Fri Oct  9 00:52:15 2020
 
 @author: soukhind
+
+This file calculates the overlaid images, sorts them and saves them
+in respective folders.
+Strict requirment: Folder structure
 """
 import cv2
 import os
