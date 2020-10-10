@@ -35,14 +35,14 @@ def overlay(path1,path2):
     
     img1 = img_to_array(load_img(path1,target_size = (224,224)))
     img2 = img_to_array(load_img(path2,target_size = (224,224)))
-    #img1 /= 255.
+    #img1 /= 255. # Opencv does not like floating point values
     #img2 /= 255.
     ovy = (img1 + img2)/2
     return ovy
 
 
 
-def generate_merged(src,destn,nmergs):
+def generate_merged(src,destn,nmergs,correct = True):
     """
     
 
@@ -62,41 +62,85 @@ def generate_merged(src,destn,nmergs):
 
     """
     os.makedirs(destn,exist_ok=True)
-    os.makedirs(destn + '/Female',exist_ok=True)
-    os.makedirs(destn + '/Manmade',exist_ok=True)
-    os.makedirs(destn + '/Natural',exist_ok=True)
-    os.makedirs(destn + '/Powered',exist_ok=True)
-    os.makedirs(destn + '/Nonpowered',exist_ok=True)
-    os.makedirs(destn + '/Male',exist_ok=True)
-    
+    if correct == True:        
+        os.makedirs(destn + '/Correct' + '/Female',exist_ok=True)
+        os.makedirs(destn + '/Correct' + '/Manmade',exist_ok=True)
+        os.makedirs(destn + '/Correct' + '/Natural',exist_ok=True)
+        os.makedirs(destn + '/Correct' + '/Powered',exist_ok=True)
+        os.makedirs(destn + '/Correct' + '/Nonpowered',exist_ok=True)
+        os.makedirs(destn + '/Correct' + '/Male',exist_ok=True)
+        destn = destn + '/Correct'
+    else:
+        os.makedirs(destn + '/Incorrect' + '/Female',exist_ok=True)
+        os.makedirs(destn + '/Incorrect' + '/Manmade',exist_ok=True)
+        os.makedirs(destn + '/Incorrect' + '/Natural',exist_ok=True)
+        os.makedirs(destn + '/Incorrect' + '/Powered',exist_ok=True)
+        os.makedirs(destn + '/Incorrect' + '/Nonpowered',exist_ok=True)
+        os.makedirs(destn + '/Incorrect' + '/Male',exist_ok=True)        
+        destn = destn + '/Incorrect/'
+
     dirs = []
     for dirname,_,_ in os.walk(src):
       dirs.append(dirname)
     dirs = [dirs[i] for i in [2,3,5,6,8,9]] # extract the required sublcass dirs
     savestrs = ['Natural','Manmade','Nonpowered','Powered','Male','Female']
     #savestrs is positioned according to dirs
-    
-    cats = np.arange(0,6)
-    for cat in cats:
-      for img in range(nmergs):
-        # pick out the other cat to merge
-        other_cat = np.random.choice(cats[cats != cat]) 
-        while True:
-          # select a random file from first cat
-          fname1 = np.random.choice(os.listdir(dirs[cat])) 
-          path1 = os.path.join(dirs[cat], fname1)
-          # select a random file from second cat
-          fname2 = np.random.choice(os.listdir(dirs[other_cat]))
-          path2 = os.path.join(dirs[other_cat], fname2)
-          if fname1 != '.DS_Store' and  fname2 != '.DS_Store':  # Exclude unwanted files 
-            break
-        oly = overlay(path1,path2) # generate the overlay
-        filepath = str(os.path.join(destn,savestrs[cat]) + '/' +
-                       savestrs[cat] + '_' + str(img+1) + '.jpg')
-        cv2.imwrite(filepath,
-                    cv2.cvtColor(oly, cv2.COLOR_RGB2BGR)) # flip the rgb channels
 
-def sort_imgs(data_path,train_path,test_path,correct = True):
+    cats = np.arange(0,6)
+    if correct:
+        for cat in cats:
+          for img in range(nmergs):
+            # pick out the other cat to merge
+            other_cat = np.random.choice(cats[cats != cat]) 
+            while True:
+              # select a random file from first cat
+              fname1 = np.random.choice(os.listdir(dirs[cat])) 
+              path1 = os.path.join(dirs[cat], fname1)
+              # select a random file from second cat
+              fname2 = np.random.choice(os.listdir(dirs[other_cat]))
+              path2 = os.path.join(dirs[other_cat], fname2)
+              if fname1 != '.DS_Store' and  fname2 != '.DS_Store':  # Exclude unwanted files 
+                break
+            oly = overlay(path1,path2) # generate the overlay
+            filepath = str(os.path.join(destn,savestrs[cat]) + '/' +
+                           savestrs[cat] + '_' + str(img+1) + '.jpg')
+            cv2.imwrite(filepath,
+                        cv2.cvtColor(oly, cv2.COLOR_RGB2BGR)) # flip the rgb channels
+    
+    else:
+        srcdir = []
+        for dpath,_,f in os.walk(src):
+            if len(f) > 1:
+                srcdir.append(dpath)
+    
+        for cat in range(6):
+            temp1 = srcdir.pop(cat)
+            tail_path = os.path.split(temp1)[1]
+            wdir = os.path.join(destn,tail_path)
+            for img in range(nmergs):
+
+                cat1dir,cat2dir = np.random.choice(srcdir,2,replace = False)
+                while True:
+                    fname1 = np.random.choice(os.listdir(cat1dir)) 
+                    path1 = os.path.join(cat1dir, fname1)
+                    # select a random file from second cat
+                    fname2 = np.random.choice(os.listdir(cat2dir))
+                    path2 = os.path.join(cat2dir, fname2)
+                    if fname1 != '.DS_Store' and  fname2 != '.DS_Store':  
+                        # Exclude unwanted files 
+                        break
+                #print(path1,path2)
+                oly = overlay(path1,path2) # generate the overlay
+                filepath = str(wdir + '/' +
+                           savestrs[cat] + '_inc' + str(img+1) + '.jpg')
+                #print(filepath)
+                cv2.imwrite(filepath,
+                        cv2.cvtColor(oly, cv2.COLOR_RGB2BGR)) # flip the rgb channels
+            srcdir.insert(cat, temp1)
+            print(cat)
+            
+            
+def sort_imgs(data_path,train_path,test_path,correct,n_train = 75,n_test = 15):
     """
     
 
@@ -104,11 +148,16 @@ def sort_imgs(data_path,train_path,test_path,correct = True):
     ----------
     data_path : str
         Source path to load images.
+        The source must contain correct and incorrect subfolders
+        Each subfolders must contain the class merged images
     train_path : str
         Path to store training images.
     test_path : str
         Path to store test images.
-
+    n_train : int
+        Number of trianing images to sort
+    n_test : int
+        Number of testing images to sort
     Returns
     -------
     None.
@@ -119,12 +168,15 @@ def sort_imgs(data_path,train_path,test_path,correct = True):
     # 120 Train, 30 Test
     # 75 Correct,75 Incorrect for Train:15 incorrect from other cats
     # 15 Correct,15 Incorrect for Test:3 incorrect from each cats
+    
     if correct == True:
-        train_path =  train_path + '/Correct'
-        test_path = test_path + '/Correct'
+        train_path =  train_path + '/Correct/'
+        test_path = test_path + '/Correct/'
+        data_path = data_path + '/Correct/'
     else:
-        train_path =  train_path + '/Incorrect'
-        test_path = test_path + '/Incorrect'
+        train_path =  train_path + '/Incorrect/'
+        test_path = test_path + '/Incorrect/'
+        data_path = data_path + '/Incorrect/'
     
     os.makedirs(train_path,exist_ok=True)
     os.makedirs(str(train_path + '/Female'),exist_ok=True)
@@ -152,105 +204,19 @@ def sort_imgs(data_path,train_path,test_path,correct = True):
         savepaths2.append(dirname)
     savepaths2 = savepaths2[1:]
     
-    if correct:
-        i = -1
-        for dirpath,dirname,files in os.walk(data_path):
-            n = len(files)
-            if n > 1:
-                file_set = files
-                np.random.permutation(file_set)
-                train = file_set[0:75] #Selecting correct images
-                test = file_set[75:90] #Selecting correct images
-                for tr in train:
-                    shutil.copyfile(os.path.join(dirpath,tr),os.path.join(savepaths1[i],tr))
-                for tt in test:
-                    shutil.copyfile(os.path.join(dirpath,tt),os.path.join(savepaths2[i],tt))
-            i += 1
-    else:
-        
-        # Walk through and index all the files
-        dirname = []
-        files = [[] for i in range(6)]
-        i = -1
-        for dpath,_,f in os.walk(data_path):
-            if len(files) > 1:
-                dirname.append(dpath)
-                files[i] = f
-                i += 1
-                
-        dirname = dirname[1:]
-        
-        for item in files:
-            for vals  in item:
-                if vals == '.DS_Store':
-                    item.remove('.DS_Store')
-        
-        #Now start saving incorrect ones
-        cats = np.arange(0,6)
-        for cat in cats:
-            wdir1 = savepaths1[cat]
-            wdir2 = savepaths2[cat]
-            mdir = dirname[cat]
-            temp = np.array(dirname)
-            odirs = temp[temp!=mdir]
-            for idx,dirs in enumerate(odirs):
-                fset = np.random.permutation(files[dirname.index(dirs)])
-                for tr in fset[0:15]:
-                        shutil.copyfile(os.path.join(dirs,tr),os.path.join(wdir1,tr))
-                for tt in fset[15:18]:
-                        shutil.copyfile(os.path.join(dirs,tt),os.path.join(wdir2,tt))
-            
 
-            
-#%%
-train_path = '/Users/soukhind/Desktop/ann/data/merge/merge_train/Incorrect'
-test_path = '/Users/soukhind/Desktop/ann/data/merge/merge_test/Incorrect'
-savepaths1 = []
-for dirname,_,_ in os.walk(train_path):
-    savepaths1.append(dirname)
-savepaths1 = savepaths1[1:]
-
-savepaths2 = []
-for dirname,_,_ in os.walk(test_path):
-    savepaths2.append(dirname)
-savepaths2 = savepaths2[1:]
-
-# Walk through and index all the files
-dirname = []
-files = [[] for i in range(6)]
-i = -1
-for dpath,_,f in os.walk('/Users/soukhind/Desktop/ann/data/merge/merge_data'):
-    if len(files) > 1:
-        dirname.append(dpath)
-        files[i] = f
+    i = -1
+    for dirpath,dirname,files in os.walk(data_path):
+        n = len(files)
+        if n > 1:
+            file_set = files
+            np.random.permutation(file_set)
+            train = file_set[0:75] #Selecting correct images
+            test = file_set[75:90] #Selecting correct images
+            for tr in train:
+                shutil.copyfile(os.path.join(dirpath,tr),os.path.join(savepaths1[i],tr))
+            for tt in test:
+                shutil.copyfile(os.path.join(dirpath,tt),os.path.join(savepaths2[i],tt))
         i += 1
-        
-dirname = dirname[1:]
 
-for item in files:
-    for vals  in item:
-        if vals == '.DS_Store':
-            item.remove('.DS_Store')
-
-#Now start saving incorrect ones
-cats = np.arange(0,6)
-for cat in cats:
-    wdir1 = savepaths1[cat]
-    wdir2 = savepaths2[cat]
-    mdir = dirname[cat]
-    temp = np.array(dirname)
-    odirs = temp[temp!=mdir]
-    for idx,dirs in enumerate(odirs):
-        print(idx)
-        fset = np.random.permutation(files[dirname.index(dirs)])
-        for tr in fset[0:15]:
-                shutil.copyfile(os.path.join(dirs,tr),os.path.join(wdir1,tr))
-        for tt in fset[15:18]:
-                shutil.copyfile(os.path.join(dirs,tt),os.path.join(wdir2,tt))
-    
-
-   
-
-
-    
-        
+            
