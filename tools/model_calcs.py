@@ -65,7 +65,7 @@ def avg_accuracy(data_train,train_labels,
                  data_test,test_labels,
                  categories,
                  modifier,
-                 model,top_model):
+                 model,top_model,layeridx):
     ncats = len(categories)
     n_layers = 13
     t_acc = np.zeros((ncats,n_layers))
