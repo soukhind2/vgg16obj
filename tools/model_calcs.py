@@ -96,7 +96,9 @@ def avg_accuracy(data_train,train_labels,
                  data_test,test_labels,
                  categories,
                  modifier,
-                 model,top_model,idxpath,bidir = True):
+                 model,top_model,idxpath,
+                 atstrng,
+                 bidir = True):
     """
     
 
@@ -120,6 +122,8 @@ def avg_accuracy(data_train,train_labels,
         top model.
     idxpath : string
         for internal use.
+    atstrng : float32
+        attention strength.
     bidir : bool, optional
         Bidirectionality. The default is True.
 
@@ -146,7 +150,7 @@ def avg_accuracy(data_train,train_labels,
             beta = [20,100,150,150,240,240,150,150,80,20,20,10,1] #multiplicative type
             layermask = [0] * 13
             layermask[li] = 1
-            tensor_attnmap = gen_attnmap(modifier,layermask,cat,bidir)
+            tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,cat,bidir)
                     
 
             def attnrelu(x,map = tensor_attnmap):
