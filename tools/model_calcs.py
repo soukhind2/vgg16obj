@@ -17,52 +17,78 @@ from tensorflow import math
 import time
 
 def gen_attnmap(modifier,mask,category,bi):
-  attnmap = []  
-  #conv1_1 & conv1_2
-  for layer in range(2):
-    mapval = np.float32(modifier[category][layer])
-    amap = np.ones((224,224,64),dtype='float32') + np.tile(mapval,[224,224,1])* mask[layer]
-    if bi:
+    """
+    
+
+    Parameters
+    ----------
+    modifier : list
+        modifier to be used to implement attention.
+    mask : ndarray
+        binary vector to determine which layer to apply attention at. 
+        include attention strength by multiplying to it
+    category : ndarray
+        cateogies .
+    bi : bidirectionality
+        True & False.
+
+    Returns
+    -------
+    tensor_attnmap : tensor
+        attention map.
+
+    """
+    attnmap = []  
+    #conv1_1 & conv1_2
+    for layer in range(2):
+        mapval = np.float32(modifier[category][layer])
+        if bi == False:
+            mapval[mapval < 0] = 0
+        amap = np.ones((224,224,64),dtype='float32') + np.tile(mapval,[224,224,1])* mask[layer]
         amap[amap < 0] = 0
-    attnmap.append(amap)
-
-  #conv2_1 & conv2_2
-  for layer in range(2,4):
-    mapval = np.float32(modifier[category][layer])
-    amap = np.ones((112,112,128),dtype='float32') + np.tile(mapval,[112,112,1])* mask[layer]
-    if bi:
+        attnmap.append(amap)
+    
+    #conv2_1 & conv2_2
+    for layer in range(2,4):
+        mapval = np.float32(modifier[category][layer])
+        if bi == False:
+            mapval[mapval < 0] = 0
+        amap = np.ones((112,112,128),dtype='float32') + np.tile(mapval,[112,112,1])* mask[layer]
         amap[amap < 0] = 0
-    attnmap.append(amap)
-
-  #conv3_1 - conv3_3
-  for layer in range(4,7):
-    mapval = np.float32(modifier[category][layer])
-    amap = np.ones((56,56,256),dtype='float32') + np.tile(mapval,[56,56,1])* mask[layer]
-    if bi:
+        attnmap.append(amap)
+    
+    #conv3_1 - conv3_3
+    for layer in range(4,7):
+        mapval = np.float32(modifier[category][layer])
+        if bi == False:
+            mapval[mapval < 0] = 0
+        amap = np.ones((56,56,256),dtype='float32') + np.tile(mapval,[56,56,1])* mask[layer]
         amap[amap < 0] = 0
-    attnmap.append(amap)
-
-  #conv4_1 - conv4_3
-  for layer in range(7,10):
-    mapval = np.float32(modifier[category][layer])
-    amap = np.ones((28,28,512),dtype='float32') + np.tile(mapval,[28,28,1])* mask[layer]
-    if bi:
+        attnmap.append(amap)
+    
+    #conv4_1 - conv4_3
+    for layer in range(7,10):
+        mapval = np.float32(modifier[category][layer])
+        if bi == False:
+            mapval[mapval < 0] = 0
+        amap = np.ones((28,28,512),dtype='float32') + np.tile(mapval,[28,28,1])* mask[layer]
         amap[amap < 0] = 0
-    attnmap.append(amap)
-
-  #conv5_1 - conv5_3
-  for layer in range(10,13):
-    mapval = np.float32(modifier[category][layer])
-    amap = np.ones((14,14,512),dtype='float32') + np.tile(mapval,[14,14,1])* mask[layer]
-    if bi:
+        attnmap.append(amap)
+    
+    #conv5_1 - conv5_3
+    for layer in range(10,13):
+        mapval = np.float32(modifier[category][layer])
+        if bi == False:
+            mapval[mapval < 0] = 0
+        amap = np.ones((14,14,512),dtype='float32') + np.tile(mapval,[14,14,1])* mask[layer]
         amap[amap < 0] = 0
-    attnmap.append(amap)
-
-  tensor_attnmap = []
-  for layer in range(len(attnmap)):
-    tensor_attnmap.append(tf.convert_to_tensor(attnmap[layer]))
-
-  return tensor_attnmap
+        attnmap.append(amap)
+    
+    tensor_attnmap = []
+    for layer in range(len(attnmap)):
+      tensor_attnmap.append(tf.convert_to_tensor(attnmap[layer])) 
+    
+    return tensor_attnmap
 
 
 
@@ -71,6 +97,39 @@ def avg_accuracy(data_train,train_labels,
                  categories,
                  modifier,
                  model,top_model,idxpath,bidir = True):
+    """
+    
+
+    Parameters
+    ----------
+    data_train : ndarray
+        Training data.
+    train_labels : categorical
+        Training labels.
+    data_test : ndarray
+        Testing data.
+    test_labels : categorical
+        Testing labels.
+    categories : ndarray
+        Names of each category.
+    modifier : list
+        modifier to be used to implement attention.
+    model : keras model
+        base model.
+    top_model : keras model
+        top model.
+    idxpath : string
+        for internal use.
+    bidir : bool, optional
+        Bidirectionality. The default is True.
+
+    Returns
+    -------
+    t_acc
+        Accuracy for each category at each layer.
+
+    """
+    
     ncats = len(categories)
     n_layers = 13
     t_acc = np.zeros((ncats,n_layers))
@@ -87,7 +146,7 @@ def avg_accuracy(data_train,train_labels,
             beta = [20,100,150,150,240,240,150,150,80,20,20,10,1] #multiplicative type
             layermask = [0] * 13
             layermask[li] = 1
-            tensor_attnmap = gen_attnmap(modifier,layermask,cat,bidir,beta)
+            tensor_attnmap = gen_attnmap(modifier,layermask,cat,bidir)
                     
 
             def attnrelu(x,map = tensor_attnmap):
@@ -126,4 +185,4 @@ def avg_accuracy(data_train,train_labels,
         
             out = top_model.evaluate(f_test, test_labels)
             t_acc[cat,li] = out[1]
-    return history,t_acc
+    return t_acc
