@@ -148,7 +148,7 @@ def avg_accuracy(data_train,train_labels,
     
         for li in range(n_layers):
             beta = [20,100,150,150,240,240,150,150,80,20,20,10,1] #multiplicative type
-            layermask = [0] * 13
+            layermask = np.zeros(13)
             layermask[li] = 1
             tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,cat,bidir)
                     
@@ -190,3 +190,21 @@ def avg_accuracy(data_train,train_labels,
             out = top_model.evaluate(f_test, test_labels)
             t_acc[cat,li] = out[1]
     return t_acc
+
+
+def get_acc(data_train,train_labels,
+                 data_test,test_labels,
+                 categories,
+                 modifier,
+                 model,top_model,idxpath,
+                 atstrng,
+                 bidir = True):
+
+    x = avg_accuracy(data_train,train_labels,
+                 data_test,test_labels,
+                 categories,
+                 modifier,
+                 model,top_model,idxpath,
+                 atstrng,
+                 bidir = True)
+    return x
