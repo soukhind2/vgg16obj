@@ -144,7 +144,12 @@ def generate_merged(src,destn,nmergs,correct = True):
             print(cat)
             
             
-def sort_imgs(data_path,train_path,test_path,correct,n_train = 75,n_test = 15):
+def sort_merged_imgs(data_path,
+              train_path,
+              test_path,
+              correct,
+              n_train = 75,
+              n_test = 15):
     """
     
 
@@ -201,8 +206,7 @@ def sort_imgs(data_path,train_path,test_path,correct,n_train = 75,n_test = 15):
     savepaths1 = []
     for dirname,_,_ in os.walk(train_path):
         savepaths1.append(dirname)
-    savepaths1 = savepaths1[1:]
-    
+    savepaths1 = savepaths1[1:]    
     savepaths2 = []
     for dirname,_,_ in os.walk(test_path):
         savepaths2.append(dirname)
@@ -215,12 +219,100 @@ def sort_imgs(data_path,train_path,test_path,correct,n_train = 75,n_test = 15):
         if n > 1:
             file_set = files
             np.random.permutation(file_set)
-            train = file_set[0:75] #Selecting correct images
-            test = file_set[75:90] #Selecting correct images
+            train = file_set[0:n_train] #Selecting correct images
+            test = file_set[n_train:n_train + n_test] #Selecting correct images
             for tr in train:
                 shutil.copyfile(os.path.join(dirpath,tr),os.path.join(savepaths1[i],tr))
             for tt in test:
                 shutil.copyfile(os.path.join(dirpath,tt),os.path.join(savepaths2[i],tt))
         i += 1
 
+def sort_reg_imgs(data_path,
+              train_path,
+              test_path,
+              correct,
+              n_train = 75,
+              n_test = 15):
+
+    
+    if correct == True:
+        train_path =  train_path + '/Correct/'
+        test_path = test_path + '/Correct/'
+    else:
+        train_path =  train_path + '/Incorrect/'
+        test_path = test_path + '/Incorrect/'
+    
+    os.makedirs(train_path,exist_ok=True)
+    os.makedirs(str(train_path + '/Female'),exist_ok=True)
+    os.makedirs(str(train_path + '/Manmade'),exist_ok=True)
+    os.makedirs(str(train_path + '/Natural'),exist_ok=True)
+    os.makedirs(str(train_path + '/Powered'),exist_ok=True)
+    os.makedirs(str(train_path + '/Nonpowered'),exist_ok=True)
+    os.makedirs(str(train_path + '/Male'),exist_ok=True)
+    
+    os.makedirs(test_path,exist_ok=True)
+    os.makedirs(test_path + '/Female',exist_ok=True)
+    os.makedirs(test_path + '/Manmade',exist_ok=True)
+    os.makedirs(test_path + '/Natural',exist_ok=True)
+    os.makedirs(test_path + '/Powered',exist_ok=True)
+    os.makedirs(test_path + '/Nonpowered',exist_ok=True)
+    os.makedirs(test_path + '/Male',exist_ok=True)
+    
+    savepaths1 = []
+    for dirname,_,_ in os.walk(train_path):
+        savepaths1.append(dirname)
+    savepaths1 = savepaths1[1:]    
+    savepaths2 = []
+    for dirname,_,_ in os.walk(test_path):
+        savepaths2.append(dirname)
+    savepaths2 = savepaths2[1:]
+    
+    if correct:  
+        i = -1
+        for dirpath,dirname,files in os.walk(data_path):
+            n = len(files)
+            if n > 1:
+                file_set = files
+                np.random.permutation(file_set)
+                print(len(file_set))
+                train = file_set[0:76] #Selecting correct images
+                test = file_set[76:91] #Selecting correct images
+                for tr in train:
+                    shutil.copyfile(os.path.join(dirpath,tr),os.path.join(savepaths1[i],tr))
+                for tt in test:
+                    shutil.copyfile(os.path.join(dirpath,tt),os.path.join(savepaths2[i],tt))
+            i += 1
+    else:
+        srcdir = []
+        for dpath,_,f in os.walk(data_path):
+            if len(f) > 1:
+                srcdir.append(dpath)
+
+        i = -1
+        for cat in range(6):
+            temp1 = srcdir.pop(cat)
+            tail_path = os.path.split(temp1)[1]
+            wdir = os.path.join(train_path,tail_path)
+            for img in range(75):
+                cat1dir = np.random.choice(srcdir)
+                file = np.random.choice(os.listdir(cat1dir))
+                shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
+
+            i += 1
+            srcdir.insert(cat, temp1)
+            print(cat)
+        
+        i = -1
+        for cat in range(6):
+            temp1 = srcdir.pop(cat)
+            tail_path = os.path.split(temp1)[1]
+            wdir = os.path.join(test_path,tail_path)
+            for img in range(15):
+                cat1dir = np.random.choice(srcdir)
+                file = np.random.choice(os.listdir(cat1dir))
+                shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
+
+            i += 1
+            srcdir.insert(cat, temp1)
+            print(cat)
             

@@ -16,41 +16,46 @@ from tensorflow.python.ops import nn
 from tensorflow import math
 import time
 
-def gen_attnmap(modifier,mask,category):
+def gen_attnmap(modifier,mask,category,bi):
   attnmap = []  
   #conv1_1 & conv1_2
   for layer in range(2):
     mapval = np.float32(modifier[category][layer])
     amap = np.ones((224,224,64),dtype='float32') + np.tile(mapval,[224,224,1])* mask[layer]
-    amap[amap < 0] = 0
+    if bi:
+        amap[amap < 0] = 0
     attnmap.append(amap)
 
   #conv2_1 & conv2_2
   for layer in range(2,4):
     mapval = np.float32(modifier[category][layer])
     amap = np.ones((112,112,128),dtype='float32') + np.tile(mapval,[112,112,1])* mask[layer]
-    amap[amap < 0] = 0
+    if bi:
+        amap[amap < 0] = 0
     attnmap.append(amap)
 
   #conv3_1 - conv3_3
   for layer in range(4,7):
     mapval = np.float32(modifier[category][layer])
     amap = np.ones((56,56,256),dtype='float32') + np.tile(mapval,[56,56,1])* mask[layer]
-    amap[amap < 0] = 0
+    if bi:
+        amap[amap < 0] = 0
     attnmap.append(amap)
 
   #conv4_1 - conv4_3
   for layer in range(7,10):
     mapval = np.float32(modifier[category][layer])
     amap = np.ones((28,28,512),dtype='float32') + np.tile(mapval,[28,28,1])* mask[layer]
-    amap[amap < 0] = 0
+    if bi:
+        amap[amap < 0] = 0
     attnmap.append(amap)
 
   #conv5_1 - conv5_3
   for layer in range(10,13):
     mapval = np.float32(modifier[category][layer])
     amap = np.ones((14,14,512),dtype='float32') + np.tile(mapval,[14,14,1])* mask[layer]
-    amap[amap < 0] = 0
+    if bi:
+        amap[amap < 0] = 0
     attnmap.append(amap)
 
   tensor_attnmap = []
@@ -65,7 +70,7 @@ def avg_accuracy(data_train,train_labels,
                  data_test,test_labels,
                  categories,
                  modifier,
-                 model,top_model,idxpath):
+                 model,top_model,idxpath,bidir = True):
     ncats = len(categories)
     n_layers = 13
     t_acc = np.zeros((ncats,n_layers))
@@ -82,7 +87,7 @@ def avg_accuracy(data_train,train_labels,
             beta = [20,100,150,150,240,240,150,150,80,20,20,10,1] #multiplicative type
             layermask = [0] * 13
             layermask[li] = 1
-            tensor_attnmap = gen_attnmap(modifier,layermask,cat)
+            tensor_attnmap = gen_attnmap(modifier,layermask,cat,bidir,beta)
                     
 
             def attnrelu(x,map = tensor_attnmap):
