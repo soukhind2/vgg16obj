@@ -149,8 +149,8 @@ def avg_accuracy(data_train,train_labels,
             layeridx = np.load(idxpath)
             if layeridx == 13:
                 layeridx = 0
+            x = nn.relu(x)
             activations = math.multiply(x,map[layeridx])
-            activations = nn.relu(activations)
             layeridx += 1
             np.save(idxpath,layeridx)
             return activations
