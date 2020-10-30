@@ -275,8 +275,8 @@ def sort_reg_imgs(data_path,
                 file_set = files
                 np.random.permutation(file_set)
                 print(len(file_set))
-                train = file_set[0:76] #Selecting correct images
-                test = file_set[76:91] #Selecting correct images
+                train = file_set[0:n_train] #Selecting correct images
+                test = file_set[n_train:n_train+n_test] #Selecting correct images
                 for tr in train:
                     shutil.copyfile(os.path.join(dirpath,tr),os.path.join(savepaths1[i],tr))
                 for tt in test:
@@ -293,7 +293,7 @@ def sort_reg_imgs(data_path,
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(train_path,tail_path)
-            for img in range(75):
+            for img in range(n_train):
                 cat1dir = np.random.choice(srcdir)
                 file = np.random.choice(os.listdir(cat1dir))
                 shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
@@ -307,7 +307,7 @@ def sort_reg_imgs(data_path,
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(test_path,tail_path)
-            for img in range(15):
+            for img in range(n_test):
                 cat1dir = np.random.choice(srcdir)
                 file = np.random.choice(os.listdir(cat1dir))
                 shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))

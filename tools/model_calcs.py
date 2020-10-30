@@ -16,7 +16,7 @@ from tensorflow.python.ops import nn
 from tensorflow import math
 import time
 
-def gen_attnmap(modifier,mask,category,bi):
+def gen_attnmap(modifier,mask,category,bi,atype):
     """
     
 
@@ -29,23 +29,31 @@ def gen_attnmap(modifier,mask,category,bi):
         include attention strength by multiplying to it
     category : ndarray
         cateogies .
-    bi : bidirectionality
+    bi : boolean 
+        bidirectionality
         True & False.
-
+    atype: int
+        1 = Multiplicative
+        2 = Additive
     Returns
     -------
     tensor_attnmap : tensor
         attention map.
 
     """
-    attnmap = []  
+    attnmap = []
+    #beta = calc_beta(avg_tun_activ)/10
+  
     #conv1_1 & conv1_2
     for layer in range(2):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
             mapval[mapval < 0] = 0
-        amap = np.ones((224,224,64),dtype='float32') + np.tile(mapval,[224,224,1])* mask[layer]
-        amap[amap < 0] = 0
+        if atype == 1:
+          amap = np.ones((224,224,64),dtype='float32') + np.tile(mapval,[224,224,1])* mask[layer]
+        elif atype == 2:
+          amap = np.tile(mapval,[224,224,1])* mask[layer]
+        #amap[amap < 0] = 0
         attnmap.append(amap)
     
     #conv2_1 & conv2_2
@@ -53,8 +61,11 @@ def gen_attnmap(modifier,mask,category,bi):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
             mapval[mapval < 0] = 0
-        amap = np.ones((112,112,128),dtype='float32') + np.tile(mapval,[112,112,1])* mask[layer]
-        amap[amap < 0] = 0
+        if atype == 1:
+          amap = np.ones((112,112,128),dtype='float32') + np.tile(mapval,[112,112,1])* mask[layer]
+        elif atype == 2:
+          amap = np.tile(mapval,[112,112,1])* mask[layer]
+        #amap[amap < 0] = 0
         attnmap.append(amap)
     
     #conv3_1 - conv3_3
@@ -62,8 +73,11 @@ def gen_attnmap(modifier,mask,category,bi):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
             mapval[mapval < 0] = 0
-        amap = np.ones((56,56,256),dtype='float32') + np.tile(mapval,[56,56,1])* mask[layer]
-        amap[amap < 0] = 0
+        if atype == 1:
+          amap = np.ones((56,56,256),dtype='float32') + np.tile(mapval,[56,56,1])* mask[layer]
+        elif atype == 2:
+          amap = np.tile(mapval,[56,56,1])* mask[layer]
+        #amap[amap < 0] = 0
         attnmap.append(amap)
     
     #conv4_1 - conv4_3
@@ -71,8 +85,11 @@ def gen_attnmap(modifier,mask,category,bi):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
             mapval[mapval < 0] = 0
-        amap = np.ones((28,28,512),dtype='float32') + np.tile(mapval,[28,28,1])* mask[layer]
-        amap[amap < 0] = 0
+        if atype == 1:
+          amap = np.ones((28,28,512),dtype='float32') + np.tile(mapval,[28,28,1])* mask[layer]
+        elif atype == 2:
+          amap = np.tile(mapval,[28,28,1])* mask[layer]
+        #amap[amap < 0] = 0
         attnmap.append(amap)
     
     #conv5_1 - conv5_3
@@ -80,8 +97,11 @@ def gen_attnmap(modifier,mask,category,bi):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
             mapval[mapval < 0] = 0
-        amap = np.ones((14,14,512),dtype='float32') + np.tile(mapval,[14,14,1])* mask[layer]
-        amap[amap < 0] = 0
+        if atype ==1:
+          amap = np.ones((14,14,512),dtype='float32') + np.tile(mapval,[14,14,1])* mask[layer]
+        elif atype == 2:
+          amap = np.tile(mapval,[14,14,1])* mask[layer]
+        #amap[amap < 0] = 0
         attnmap.append(amap)
     
     tensor_attnmap = []
@@ -98,7 +118,8 @@ def avg_accuracy(data_train,train_labels,
                  model,top_model,idxpath,
                  category,
                  atstrng,
-                 bidir = True):
+                 bidir = True,
+                 atype = 1):
     """
     
 
@@ -126,7 +147,9 @@ def avg_accuracy(data_train,train_labels,
         attention strength.
     bidir : bool, optional
         Bidirectionality. The default is True.
-
+    atype: int
+        1 = Multiplicative
+        2 = Additive
     Returns
     -------
     t_acc
@@ -134,23 +157,27 @@ def avg_accuracy(data_train,train_labels,
 
     """
     
-
     epochs = 30    
     n_layers = 13
     t_acc = np.zeros(n_layers)
     for li in range(n_layers):
-        beta = [20,100,150,150,240,240,150,150,80,20,20,10,1] #multiplicative type
         layermask = np.zeros(13)
         layermask[li] = 1
-        tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,category,bidir)
-                
+        tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,category,bidir,atype)
+        
+        
+        
 
-        def attnrelu(x,map = tensor_attnmap):
+        def attnrelu(x,map = tensor_attnmap,atype = atype):
             layeridx = np.load(idxpath)
             if layeridx == 13:
                 layeridx = 0
-            x = nn.relu(x)
-            activations = math.multiply(x,map[layeridx])
+            if atype == 1:
+              x = nn.relu(x)
+              activations = math.multiply(x,map[layeridx])
+            if atype == 2:
+              activations = math.add(x,map[layeridx])
+              activations = nn.relu(activations)
             layeridx += 1
             np.save(idxpath,layeridx)
             return activations
@@ -164,14 +191,9 @@ def avg_accuracy(data_train,train_labels,
         utils.apply_modifications(model)
         model.compile()
     
-        start = time.time()
-        f_train = model.predict(data_train) 
-        print(f'Train Time: {time.time() - start}')
+        f_train = model.predict(data_train)     
     
-    
-        start = time.time()
         f_test = model.predict(data_test)
-        print(f'Test Time: {time.time() - start}')
         es = EarlyStopping(monitor='loss', mode='min', verbose=1)
   
         history = top_model.fit(x = f_train,  y = train_labels,
@@ -181,22 +203,14 @@ def avg_accuracy(data_train,train_labels,
     
         out = top_model.evaluate(f_test, test_labels)
         t_acc[li] = out[1]
+        
+
     return t_acc
 
-
-def get_acc(data_train,train_labels,
-                 data_test,test_labels,
-                 categories,
-                 modifier,
-                 model,top_model,idxpath,
-                 atstrng,
-                 bidir = True):
-
-    x = avg_accuracy(data_train,train_labels,
-                 data_test,test_labels,
-                 categories,
-                 modifier,
-                 model,top_model,idxpath,
-                 atstrng,
-                 bidir = True)
-    return x
+def calc_beta(avg_act):
+  beta = [0 for item in avg_act]
+  for layer in range(len(avg_act)):
+    for item in avg_act[layer]:
+      beta[layer] += np.mean(item)
+      beta = np.array(beta)
+  return beta

@@ -33,7 +33,7 @@ from vgg16obj.tools import stats as st
 
 import tensorflow as tf
 from tensorflow import math
-
+import seaborn as sns
 #%%
 def noisy(image):
   row,col,ch= image.shape
@@ -60,7 +60,6 @@ def convertimgs(path,noise = False) :
               im = noisy(im)
             data.append(im) 
     return data
-
 
 #%%
 # Merged images load
@@ -138,7 +137,6 @@ reg_test = np.array(reg_test)
 
 print(reg_train.shape,reg_test.shape)
 #%%
-
 model = VGG16(weights='imagenet',
               include_top=False,input_shape = [224,224,3])
 #plot_model(model,show_shapes=True,expand_nested=True)
@@ -161,12 +159,12 @@ print(f'Test Time: {time.time() - start}')
 epochs = 30
 
 #train_data = np.load('features_train.npy')
-ntrain = 75
+ntrain = 80
 train_labels = to_categorical([0] * ntrain + [1]*ntrain)
 
 
 #test_data = np.load('features_test.npy')
-ntest = 15
+ntest = 40
 test_labels = to_categorical([0] * ntest + [1]*ntest) 
 
 losses = 'binary_crossentropy'
@@ -174,7 +172,7 @@ losses = 'binary_crossentropy'
 top_model = Sequential()
 top_model.add(Flatten(input_shape=features_train.shape[1:])) 
 top_model.add(Dense(4096, activation='relu',name = 'top_dense1')) 
-top_model.add(Dense(2, activation='sigmoid',name = 'predictions'))
+top_model.add(Dense(2, activation='softmax',name = 'predictions'))
 
 top_model.compile(optimizer= Adam(lr=1e-5),
               loss=losses,
@@ -186,7 +184,7 @@ es = EarlyStopping(monitor='loss', mode='min', verbose=1)
 #%%
 tun_activ = []
 for interest in range(6): 
-  with open ('/Users/soukhind/Desktop/tuning_values_' + str(interest), 'rb') as fp:
+  with open ('/Users/soukhind/Desktop/Session80_40/tun_val/tuning_values_' + str(interest), 'rb') as fp:
       tun_activ.extend(pickle.load(fp))
 len(tun_activ)
 
@@ -194,7 +192,7 @@ len(tun_activ)
 
 ncats = 6
 # to fish out each category tun_activations
-labels = np.array([0] * 75 + [1]*75 + [2] * 75 + [3] * 75 + [4] * 75 + [5] * 75)
+labels = np.array([0] * 40 + [1] * 40 + [2] * 40 + [3] * 40 + [4] * 40 + [5] * 40)
 cat_tun = [[[] for j in range(len(tun_activ[0]))] for i in range(ncats)]
 
 avg_tun_activ = tc.calc_avg(tun_activ) #average tuning activity for each map
@@ -217,9 +215,9 @@ for cat in range(ncats):
         continue
       fc[cat][layer][map] = (cat_tun[cat][layer][map] - 
                                 avg_tun_activ[layer][map])/std_tun_activ[layer][map]
+      
 
 #%%
-import seaborn as sns
 tun_quality = tc.calc_tun_quality(fc)
 sns.set(style="whitegrid")
 ax = sns.boxplot(data = tun_quality,palette='cool')
