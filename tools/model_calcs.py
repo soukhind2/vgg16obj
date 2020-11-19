@@ -15,6 +15,7 @@ from vis.utils import utils
 from tensorflow.python.ops import nn
 from tensorflow import math
 import time
+from sklearn.metrics import roc_curve,accuracy_score,precision_recall_curve,f1_score
 
 def gen_attnmap(modifier,mask,category,bi,atype):
     """
@@ -42,7 +43,7 @@ def gen_attnmap(modifier,mask,category,bi,atype):
 
     """
     attnmap = []
-    #beta = calc_beta(avg_tun_activ)/10
+    beta = calc_beta(avg_tun_activ)/10
   
     #conv1_1 & conv1_2
     for layer in range(2):
@@ -160,14 +161,13 @@ def avg_accuracy(data_train,train_labels,
     epochs = 30    
     n_layers = 13
     t_acc = np.zeros(n_layers)
+    thr = np.zeros(n_layers)
     for li in range(n_layers):
         layermask = np.zeros(13)
         layermask[li] = 1
         tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,category,bidir,atype)
         
         
-        
-
         def attnrelu(x,map = tensor_attnmap,atype = atype):
             layeridx = np.load(idxpath)
             if layeridx == 13:
@@ -190,7 +190,7 @@ def avg_accuracy(data_train,train_labels,
     
         utils.apply_modifications(model)
         model.compile()
-    
+        
         f_train = model.predict(data_train)     
     
         f_test = model.predict(data_test)
@@ -199,13 +199,13 @@ def avg_accuracy(data_train,train_labels,
         history = top_model.fit(x = f_train,  y = train_labels,
                 epochs=epochs,
                 batch_size=64,
-                verbose = 0, callbacks = [es])
+                verbose = 0, callbacks = [])
     
         out = top_model.evaluate(f_test, test_labels)
         t_acc[li] = out[1]
-        
 
     return t_acc
+
 
 def calc_beta(avg_act):
   beta = [0 for item in avg_act]

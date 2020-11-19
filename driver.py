@@ -8,19 +8,20 @@ Created on Sat Oct 10 03:53:33 2020
 import numpy as np
 import pandas as pd
 import os
+#os.environ["KERAS_BACKEND"] = "plaidml.keras.backend" 
 import time
 import math
 import matplotlib.pyplot as plt
 import pickle
 import cv2
 
-from tensorflow.keras.applications.vgg16 import VGG16,preprocess_input
-from tensorflow.keras.preprocessing.image import ImageDataGenerator,load_img, img_to_array
-from tensorflow.keras.layers import Flatten,Dense,Dropout,Input
-from tensorflow.keras.models import Sequential,Model
+from keras.applications.vgg16 import VGG16,preprocess_input
+from keras.preprocessing.image import ImageDataGenerator,load_img, img_to_array
+from keras.layers import Flatten,Dense,Dropout,Input
+from keras.models import Sequential,Model,load_model
 from keras.utils.np_utils import to_categorical
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
 from keras.utils.vis_utils import plot_model
 
 from sklearn import metrics
@@ -31,9 +32,12 @@ from vgg16obj.tools import tuning_calcs as tc
 from vgg16obj.tools import gradient_calcs as gc
 from vgg16obj.tools import stats as st
 
-import tensorflow as tf
-from tensorflow import math
+#import tensorflow as tf
+#from tensorflow import math
 import seaborn as sns
+
+
+
 #%%
 def noisy(image):
   row,col,ch= image.shape
@@ -137,50 +141,247 @@ reg_test = np.array(reg_test)
 
 print(reg_train.shape,reg_test.shape)
 #%%
-model = VGG16(weights='imagenet',
-              include_top=False,input_shape = [224,224,3])
-#plot_model(model,show_shapes=True,expand_nested=True)
-#model.save_weights('vgg_w',save_format='h5')
+import tensorflow as tf
+def div_norm_2d(x,
+                sum_window = [3,3],
+                sup_window= [6,6],
+                gamma=None,
+                beta=None,
+                eps=1.0, 
+                scope="dn",
+                name="dn_out",
+                return_mean=False):
+  """Applies divisive normalization on CNN feature maps.
+    Collect mean and variances on x on a local window across channels. 
+    And apply normalization as below:
+      x_ = gamma * (x - mean) / sqrt(var + eps) + beta
+    Args:
+      x: Input tensor, [B, H, W, C].
+      sum_window: Summation window size, [H_sum, W_sum].
+      sup_window: Suppression window size, [H_sup, W_sup].
+      gamma: Scaling parameter.
+      beta: Bias parameter.
+      eps: Denominator bias.
+      return_mean: Whether to also return the computed mean.
+    Returns:
+      normed: Divisive-normalized variable.
+      mean: Mean used for normalization (optional).
+    """
+  with tf.compat.v1.variable_scope(scope):
+    w_sum = tf.ones(sum_window + [1, 1]) / np.prod(np.array(sum_window))
+    w_sup = tf.ones(sup_window + [1, 1]) / np.prod(np.array(sum_window))
+    x_mean = tf.reduce_mean(x, [3], keepdims=True)
+    x_mean = tf.nn.conv2d(x_mean, w_sum, strides=[1, 1, 1, 1], padding='SAME')
+    normed = x - x_mean
+    x2 = tf.square(normed)
+    x2_mean = tf.reduce_mean(x2, [3], keepdims=True)
+    x2_mean = tf.nn.conv2d(x2_mean, w_sup, strides=[1, 1, 1, 1], padding='SAME')
+    denom = tf.sqrt(x2_mean + eps)
+    normed = normed / denom
+    if gamma is not None:
+      normed *= gamma
+    if beta is not None:
+      normed += beta
+    normed = tf.identity(normed, name=name)
+  if return_mean:
+    return normed, x_mean
+  else:
+    return normed
 
+fname = ['male_dn_3_6.h5','female_dn_3_6.h5','manmade_dn_3_6.h5',
+         'natural_dn_3_6.h5','powered_dn_3_6.h5','nonpwrd_dn_3_6.h5']
+for interest in [0,1,2,3,4,5]:
+    model = VGG16(weights='imagenet',
+                  include_top=False,input_shape = [224,224,3])
+    #plot_model(model,show_shapes=True,expand_nested=True)
+    #model.save_weights('vgg_w',save_format='h5')
+    
+    categories = ['Male','Female','Manmade','Natural','Powered','Nonpowered']
+    #interest = 5
+    print('Category of interest: ', categories[interest])
+    train_it = np.concatenate((reg_train[interest],reg_train[interest + 6]))
+    test_it = np.concatenate((reg_test[interest],reg_test[interest + 6]))
+    print(train_it.shape,test_it.shape)
+    
+    start = time.time()
+    features_train = model.predict(train_it) 
+    print(f'Train Time: {time.time() - start}')
+    
+    start = time.time()
+    features_test = model.predict(test_it) 
+    print(f'Test Time: {time.time() - start}')
+    epochs = 30
+    
+    #train_data = np.load('features_train.npy')
+    ntrain = 80
+    train_labels = to_categorical([0] * ntrain + [1]*ntrain)
+    
+    
+    #test_data = np.load('features_test.npy')
+    ntest = 40
+    test_labels = to_categorical([0] * ntest + [1]*ntest) 
+    
+    losses = 'binary_crossentropy'
+    
+    top_model = Sequential()
+    top_model.add(Flatten(input_shape=features_train.shape[1:])) 
+    top_model.add(Dense(4096, activation='relu',name = 'top_dense1')) 
+    top_model.add(Dense(2, activation='softmax',name = 'predictions'))
+    
+    top_model.compile(optimizer= Adam(lr=1e-5),
+                  loss=losses,
+                  metrics=['accuracy'])
+    top_model.summary()
+    
+    es = EarlyStopping(monitor='loss', mode='min', verbose=1)
+    
+    import numpy as np
+    
+    from keras.layers import Activation,Conv2D,MaxPool2D,Lambda
+    
+    vgg_model = VGG16(weights='imagenet',
+                  include_top=False,
+                  input_shape = [224,224,3])
+      
+    model = Sequential()
+    model.add(Conv2D(input_shape=(224,224,3),filters=64,kernel_size=(3,3),padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=64,kernel_size=(3,3),padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=128, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=128, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
+    model.add(Lambda(div_norm_2d))
+    model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
+    model.add(Lambda(div_norm_2d))
+    model.add(Flatten())
+    model.add(Dense(4096, activation = 'relu',name = 'top_dense1'))
+    model.add(Dense(2,activation='softmax',name = 'predictions'))
+    
+    model.layers[2].set_weights(vgg_model.layers[2].get_weights())
+    model.layers[4].set_weights(vgg_model.layers[3].get_weights())
+    model.layers[6].set_weights(vgg_model.layers[4].get_weights())
+    model.layers[8].set_weights(vgg_model.layers[5].get_weights())
+    model.layers[10].set_weights(vgg_model.layers[6].get_weights())
+    model.layers[12].set_weights(vgg_model.layers[7].get_weights())
+    model.layers[14].set_weights(vgg_model.layers[8].get_weights())
+    model.layers[16].set_weights(vgg_model.layers[9].get_weights())
+    model.layers[18].set_weights(vgg_model.layers[10].get_weights())
+    model.layers[20].set_weights(vgg_model.layers[11].get_weights())
+    model.layers[22].set_weights(vgg_model.layers[12].get_weights())
+    model.layers[24].set_weights(vgg_model.layers[13].get_weights())
+    model.layers[26].set_weights(vgg_model.layers[14].get_weights())
+    model.layers[28].set_weights(vgg_model.layers[15].get_weights())
+    model.layers[30].set_weights(vgg_model.layers[16].get_weights())
+    model.layers[32].set_weights(vgg_model.layers[17].get_weights())
+    model.layers[34].set_weights(vgg_model.layers[18].get_weights())
+    
+    
+    
+    model.compile(optimizer= Adam(lr=1e-5),
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    
+    
+    history = model.fit(x = train_it,  y = train_labels,
+                epochs=30,
+                batch_size=64,
+                verbose = 1, callbacks = [])
+    model.save_weights(fname[interest])
+#%%
+test_it = np.concatenate((data_test[0],data_test[0 + 6]))
+out = model.evaluate(test_it,test_labels)
+out
+#%%
 categories = ['Male','Female','Manmade','Natural','Powered','Nonpowered']
-interest = 0
-print('Category of interest: ', categories[interest])
-train_it = np.concatenate((reg_train[interest],reg_train[interest + 6]))
-test_it = np.concatenate((reg_test[interest],reg_test[interest + 6]))
-print(train_it.shape,test_it.shape)
+weight_paths1 = ['norm_weights/male_dn.h5','norm_weights/female_dn.h5',
+                'norm_weights/manmade_dn.h5','norm_weights/natural_dn.h5',
+                'norm_weights/powered_dn.h5','norm_weights/nonpwrd_dn.h5']
+acc1 = np.zeros((2,6))
 
-start = time.time()
-features_train = model.predict(train_it) 
-print(f'Train Time: {time.time() - start}')
+for cat in range(6):
+    model.load_weights(weight_paths1[cat])
+    model.compile(optimizer= Adam(lr=1e-5),
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    
+    for imtype in range(2):
+        print('Category of interest: ', categories[cat])
+        if imtype == 0: # Regular
+          test_it = np.concatenate((reg_test[cat],reg_test[cat + 6])) # Test on merged data
+        else:
+          test_it = np.concatenate((data_test[cat],data_test[cat + 6])) # Test on merged data
+        print(train_it.shape,test_it.shape)
 
-start = time.time()
-features_test = model.predict(test_it) 
-print(f'Test Time: {time.time() - start}')
-epochs = 30
+    
+        out = model.evaluate(test_it, test_labels)
+        acc1[imtype,cat] = out[1]
+        print(out)
 
-#train_data = np.load('features_train.npy')
-ntrain = 80
-train_labels = to_categorical([0] * ntrain + [1]*ntrain)
+weight_paths2 = ['male_dn_3_6.h5','female_dn_3_6.h5','manmade_dn_3_6.h5',
+         'natural_dn_3_6.h5','powered_dn_3_6.h5','nonpwrd_dn_3_6.h5']
+acc2 = np.zeros((2,6))
 
+for cat in range(6):
+    model.load_weights(weight_paths1[cat])
+    model.compile(optimizer= Adam(lr=1e-5),
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    
+    for imtype in range(2):
+        print('Category of interest: ', categories[cat])
+        if imtype == 0: # Regular
+          test_it = np.concatenate((reg_test[cat],reg_test[cat + 6])) # Test on merged data
+        else:
+          test_it = np.concatenate((data_test[cat],data_test[cat + 6])) # Test on merged data
+        print(train_it.shape,test_it.shape)
 
-#test_data = np.load('features_test.npy')
-ntest = 40
-test_labels = to_categorical([0] * ntest + [1]*ntest) 
+    
+        out = model.evaluate(test_it, test_labels)
+        acc2[imtype,cat] = out[1]
+        print(out)
+#%%
+data_plot = np.vstack([[0.58,0.66,0.63,0.57,0.7,0.61],acc1[1],acc2[1]]) # Accuracy scores obtained from regular model on merge set
+pd_data = pd.DataFrame({
+                        'Male':data_plot[:,0],'Female':data_plot[:,1],
+                        'Manmade':data_plot[:,2],'Natural':data_plot[:,3],
+                        'Powered':data_plot[:,4],'Nonpowered':data_plot[:,5]})
 
-losses = 'binary_crossentropy'
-
-top_model = Sequential()
-top_model.add(Flatten(input_shape=features_train.shape[1:])) 
-top_model.add(Dense(4096, activation='relu',name = 'top_dense1')) 
-top_model.add(Dense(2, activation='softmax',name = 'predictions'))
-
-top_model.compile(optimizer= Adam(lr=1e-5),
-              loss=losses,
-              metrics=['accuracy'])
-top_model.summary()
-
-es = EarlyStopping(monitor='loss', mode='min', verbose=1)
-
+sns.set(style="white",rc={"lines.linewidth": 2,'lines.markersize': 15})
+plt.figure(figsize = (8,8))
+ax = sns.lineplot(data = pd_data,marker = 'o')
+ax.set_xticks([0,1])
+ax.set_xlabel('Model type',size = 20)
+ax.set_title('Performance of different models on merged images',size = 20)
+ax.set_xticklabels(['Regular','Normalised'],size = 15)
+ax.tick_params(axis='both', which='major', labelsize=20)
+ax.set_ylabel('Binary Classification Acc.',size = 20)
 #%%
 tun_activ = []
 for interest in range(6): 
@@ -226,22 +427,45 @@ ax.set_xticklabels(np.arange(1,14))
 ax.set_ylabel('Tuning Quality')
 ax.set_ylim([0,50])
 #%%
-grand_acc = [[] for i in range(4)]
+#@title Multiplicative and bidirectionality corrected
+
 from vgg16obj.tools import model_calcs as mc
+
+#cat_grads = [[[-item for item in subl] for subl in level] for level in cat_grads]
 layeridx = 0
 np.save('layeridx',layeridx)
-atstrng = [0,0.5,1,2]
-
-for idx, ats in enumerate(atstrng):
-  grand_acc[idx] = mc.get_acc(reg_train,
+atstrng = 5 #0,1,1.5,2,2.5,3,3.5,4,4.5,5
+grand_acc = [[] for i in range(6)] 
+for cat in range(6):
+  print('Category of interest: ', categories[cat])
+  train_it = np.concatenate((reg_train[cat],reg_train[cat + 6]))
+  test_it = np.concatenate((data_test[cat],data_test[cat + 6]))
+  print(train_it.shape,test_it.shape)
+  model = VGG16(weights='imagenet',
+                      include_top=False,input_shape = [224,224,3])
+        
+  top_model = Sequential()
+  top_model.add(Flatten(input_shape=features_train.shape[1:])) 
+  top_model.add(Dense(4096, activation='relu',name = 'top_dense1')) 
+  top_model.add(Dense(2, activation='softmax',name = 'predictions'))
+  top_model.compile(optimizer= Adam(lr=1e-5),
+              loss=losses,
+              metrics=['accuracy'])
+  
+  grand_acc[cat] = mc.avg_accuracy(train_it,
                             train_labels,
-                            data_test,
+                            test_it,
                             test_labels,
-                            categories,
                             fc,
                             model,
                             top_model,
-                            'layeridx.npy',
-                            ats,
-                            bidir = True)
+                            '/content/layeridx.npy',
+                            cat,
+                            atstrng,
+                            bidir = True,
+                            atype = 2)
+  gc.collect()
+
+
+#%%
 
