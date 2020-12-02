@@ -25,7 +25,7 @@ from keras.layers import Input
 
 class modelarch():
     
-    def build_branch1(self, inputs , w , num_c = 2):
+    def build_branch1(self, inputs , w , num_c = 3):
     
         
         for i,j in enumerate(w):
@@ -49,6 +49,18 @@ class modelarch():
         o2 = Dense(num_c,activation="softmax",name="branch2")(b2)
         
         return o2
+
+    def build_branch3(self, inputs , w , num_c = 3):
+        
+        for i,j in enumerate(w):
+            if i == 0:
+                b3 = Dense(j, activation="relu")(inputs)
+            else:
+                b3 = Dense(j, activation="relu")(b3)
+                
+        o3 = Dense(num_c,activation="softmax",name="branch3")(b3)
+        
+        return o3
     
     def build_stem(self,s,inputs):
         
@@ -58,27 +70,22 @@ class modelarch():
             x = Dense(j, activation="relu")(x)        
         return x
     
-    def build_full_model(self,input_shape,stem_len,b1_len,b2_len):
+    def build_full_model(self,input_shape,stem_len,b1_len,b2_len,b3_len):
         
         inputs = Input(shape = input_shape)
         stem = self.build_stem(stem_len,inputs)
         b1_out = self.build_branch1(stem,b1_len)
         b2_out = self.build_branch2(stem,b2_len)
+        b3_out = self.build_branch3(stem,b3_len)
+
         
         model = Model(inputs=inputs,
-                      outputs = [b1_out, b2_out],
+                      outputs = [b1_out, b2_out, b3_out],
                       name="objnet")
         
         return model
     
-'''
-m = modelarch().build_full_model([7,7,512] ,
-                                 stem_len = [4096,4096],
-                                 b1_len = [4096,4096],
-                                 b2_len = [4096,4096]
-                                 )
-
-'''
+          
 
 
 
