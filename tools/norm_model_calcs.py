@@ -27,8 +27,7 @@ def gen_div_norm_model():
     
     vgg_model = VGG16(weights='imagenet',
                   include_top=False,
-                  input_shape = [224,224,3],
-                  mod = False)
+                  input_shape = [224,224,3])
       
     model = Sequential()
     model.add(Conv2D(input_shape=(224,224,3),filters=64,kernel_size=(3,3),padding="same", activation="relu"))
@@ -122,7 +121,6 @@ def div_norm_2d(x,
       normed: Divisive-normalized variable.
       mean: Mean used for normalization (optional).
     """
-
   with tf.compat.v1.variable_scope(scope):
     w_sum = tf.ones(sum_window + [1, 1]) / np.prod(np.array(sum_window))
     w_sup = tf.ones(sup_window + [1, 1]) / np.prod(np.array(sum_window))
@@ -312,32 +310,34 @@ def avg_accuracy(data_train,train_labels,
                name="dn_out",
                return_mean=False):
          
-         layeridx = np.load('layeridx.npy')
-         with tf.compat.v1.variable_scope(scope):
-           w_sum = tf.ones(sum_window + [1, 1]) / np.prod(np.array(sum_window))
-           w_sup = tf.ones(sup_window + [1, 1]) / np.prod(np.array(sum_window))
-           x_mean = tf.reduce_mean(x, [3], keepdims=True)
-           x_mean = tf.nn.conv2d(x_mean, w_sum, strides=[1, 1, 1, 1], padding='SAME')
-           normed = x - x_mean
-           x2 = tf.square(normed)
-           x2_mean = tf.reduce_mean(x2, [3], keepdims=True)
-           x2_mean = tf.nn.conv2d(x2_mean, w_sup, strides=[1, 1, 1, 1], padding='SAME')
-           denom = tf.sqrt(x2_mean + eps)
-           normed = normed / denom
-           if gamma is not None:
-             normed *= gamma
-           if beta is not None:
-             normed += beta
-           normed *= mod[layeridx]
-           #layeridx += 1
-           if layeridx == 13:
-               layeridx = 0
-           np.save('layeridx.npy',layeridx)
-           normed = tf.identity(normed, name=name)
-         if return_mean:
-           return normed, x_mean
-         else:
-           return normed
+            layeridx = np.load('layeridx.npy')
+            with tf.compat.v1.variable_scope(scope):
+              w_sum = tf.ones(sum_window + [1, 1]) / np.prod(np.array(sum_window))
+              w_sup = tf.ones(sup_window + [1, 1]) / np.prod(np.array(sum_window))
+              x_mean = tf.reduce_mean(x, [3], keepdims=True)
+              x_mean = tf.nn.conv2d(x_mean, w_sum, strides=[1, 1, 1, 1], padding='SAME')
+              normed = x - x_mean
+              x2 = tf.square(normed)
+              x2_mean = tf.reduce_mean(x2, [3], keepdims=True)
+              x2_mean = tf.nn.conv2d(x2_mean, w_sup, strides=[1, 1, 1, 1], padding='SAME')
+              denom = tf.sqrt(x2_mean + eps)
+              normed = normed / denom
+              if gamma is not None:
+                normed *= gamma
+              if beta is not None:
+                normed += beta
+           
+              if layeridx == 13:
+                layeridx = 0
+              normed *= mod[layeridx]
+              #layeridx += 1
+              
+              np.save('layeridx.npy',layeridx)
+              normed = tf.identity(normed, name=name)
+            if return_mean:
+              return normed, x_mean
+            else:
+              return normed
     
         model = Sequential()
         model.add(Conv2D(input_shape=(224,224,3),filters=64,kernel_size=(3,3),padding="same", activation="relu"))

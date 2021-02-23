@@ -17,7 +17,7 @@ from tensorflow import math
 import time
 from sklearn.metrics import roc_curve,accuracy_score,precision_recall_curve,f1_score
 
-def gen_attnmap(modifier,mask,category,bi,atype):
+def gen_attnmap(modifier,mask,category,bi,atype,rand_map):
     """
     
 
@@ -36,6 +36,8 @@ def gen_attnmap(modifier,mask,category,bi,atype):
     atype: int
         1 = Multiplicative
         2 = Additive
+    rand_map: bool, optional
+        Set to 'True' for random set of tuning values
     Returns
     -------
     tensor_attnmap : tensor
@@ -43,9 +45,10 @@ def gen_attnmap(modifier,mask,category,bi,atype):
 
     """
     attnmap = []
-    beta = calc_beta(avg_tun_activ)/10
+    #beta = calc_beta(avg_tun_activ)/10
   
     #conv1_1 & conv1_2
+
     for layer in range(2):
         mapval = np.float32(modifier[category][layer])
         if bi == False:
@@ -55,7 +58,13 @@ def gen_attnmap(modifier,mask,category,bi,atype):
         elif atype == 2:
           amap = np.tile(mapval,[224,224,1])* mask[layer]
         #amap[amap < 0] = 0
+        if rand_map == 1:
+          random.shuffle(amap)
+        elif rand_map == 2:
+          
+          amap = np.ones((224,224,64),dtype='float32') +  mask[layer]
         attnmap.append(amap)
+        
     
     #conv2_1 & conv2_2
     for layer in range(2,4):
@@ -67,6 +76,10 @@ def gen_attnmap(modifier,mask,category,bi,atype):
         elif atype == 2:
           amap = np.tile(mapval,[112,112,1])* mask[layer]
         #amap[amap < 0] = 0
+        if rand_map == 1:
+          random.shuffle(amap)
+        elif rand_map == 2:
+          amap = np.ones((112,112,128),dtype='float32') +  mask[layer]
         attnmap.append(amap)
     
     #conv3_1 - conv3_3
@@ -79,6 +92,10 @@ def gen_attnmap(modifier,mask,category,bi,atype):
         elif atype == 2:
           amap = np.tile(mapval,[56,56,1])* mask[layer]
         #amap[amap < 0] = 0
+        if rand_map == 1:
+          random.shuffle(amap)
+        elif rand_map == 2:
+          amap = np.ones((56,56,256),dtype='float32') + mask[layer]
         attnmap.append(amap)
     
     #conv4_1 - conv4_3
@@ -91,6 +108,10 @@ def gen_attnmap(modifier,mask,category,bi,atype):
         elif atype == 2:
           amap = np.tile(mapval,[28,28,1])* mask[layer]
         #amap[amap < 0] = 0
+        if rand_map == 1:
+          random.shuffle(amap)
+        elif rand_map == 2:
+          amap = np.ones((28,28,512),dtype='float32') + mask[layer]
         attnmap.append(amap)
     
     #conv5_1 - conv5_3
@@ -103,13 +124,21 @@ def gen_attnmap(modifier,mask,category,bi,atype):
         elif atype == 2:
           amap = np.tile(mapval,[14,14,1])* mask[layer]
         #amap[amap < 0] = 0
+        if rand_map == 1:
+          random.shuffle(amap)
+        elif rand_map == 2:
+          amap = np.ones((14,14,512),dtype='float32') + mask[layer]
         attnmap.append(amap)
+    
+    
     
     tensor_attnmap = []
     for layer in range(len(attnmap)):
       tensor_attnmap.append(tf.convert_to_tensor(attnmap[layer])) 
     
     return tensor_attnmap
+
+
 
 
 
@@ -120,7 +149,8 @@ def avg_accuracy(data_train,train_labels,
                  category,
                  atstrng,
                  bidir = True,
-                 atype = 1):
+                 atype = 1,
+                 rand_map = 0):
     """
     
 
@@ -151,6 +181,10 @@ def avg_accuracy(data_train,train_labels,
     atype: int
         1 = Multiplicative
         2 = Additive
+    rand_map: int, optional
+        0 = No randomization
+        1 = Shuffled tuning values
+        2 = Same tuning values
     Returns
     -------
     t_acc
@@ -159,15 +193,13 @@ def avg_accuracy(data_train,train_labels,
     """
     
     epochs = 30    
-    n_layers = 13
+    n_layers = 1
     t_acc = np.zeros(n_layers)
     thr = np.zeros(n_layers)
     for li in range(n_layers):
         layermask = np.zeros(13)
         layermask[li] = 1
-        tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,category,bidir,atype)
-        
-        
+        tensor_attnmap = gen_attnmap(modifier,layermask*atstrng,category,bidir,atype,rand_map)     
         def attnrelu(x,map = tensor_attnmap,atype = atype):
             layeridx = np.load(idxpath)
             if layeridx == 13:
@@ -187,7 +219,7 @@ def avg_accuracy(data_train,train_labels,
         for layer in model.layers:
             if(hasattr(layer,'activation')):
                 layer.activation = attnrelu
-    
+        
         utils.apply_modifications(model)
         model.compile()
         
