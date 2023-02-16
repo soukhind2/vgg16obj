@@ -12,7 +12,7 @@ Strict requirment: Folder structure
 import cv2
 import os
 import numpy as np
-from tensorflow.keras.preprocessing.image import load_img,img_to_array
+from tensorflow.keras.utils import load_img,img_to_array
 import shutil
 
 path = '/Users/soukhind/Desktop/ann/data/train'
@@ -70,27 +70,23 @@ def generate_merged(src,destn,nmergs,correct = True):
         os.makedirs(destn + '/Correct' + '/Female',exist_ok=True)
         os.makedirs(destn + '/Correct' + '/Manmade',exist_ok=True)
         os.makedirs(destn + '/Correct' + '/Natural',exist_ok=True)
-        os.makedirs(destn + '/Correct' + '/Powered',exist_ok=True)
-        os.makedirs(destn + '/Correct' + '/Nonpowered',exist_ok=True)
         os.makedirs(destn + '/Correct' + '/Male',exist_ok=True)
         destn = destn + '/Correct'
     else:
         os.makedirs(destn + '/Incorrect' + '/Female',exist_ok=True)
         os.makedirs(destn + '/Incorrect' + '/Manmade',exist_ok=True)
         os.makedirs(destn + '/Incorrect' + '/Natural',exist_ok=True)
-        os.makedirs(destn + '/Incorrect' + '/Powered',exist_ok=True)
-        os.makedirs(destn + '/Incorrect' + '/Nonpowered',exist_ok=True)
         os.makedirs(destn + '/Incorrect' + '/Male',exist_ok=True)        
         destn = destn + '/Incorrect/'
 
     dirs = []
     for dirname,_,_ in os.walk(src):
       dirs.append(dirname)
-    dirs = [dirs[i] for i in [2,3,5,6,8,9]] # extract the required sublcass dirs
-    savestrs = ['Natural','Manmade','Nonpowered','Powered','Male','Female']
+    dirs = [dirs[i] for i in [2,3,5,6]] # extract the required sublcass dirs
+    savestrs = ['Natural','Manmade','Male','Female']
     #savestrs is positioned according to dirs
 
-    cats = np.arange(0,6)
+    cats = np.arange(0,4)
     if correct:
         for cat in cats:
           for img in range(nmergs):
@@ -117,7 +113,7 @@ def generate_merged(src,destn,nmergs,correct = True):
             if len(f) > 1:
                 srcdir.append(dpath)
     
-        for cat in range(6):
+        for cat in range(4):
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(destn,tail_path)
@@ -125,10 +121,10 @@ def generate_merged(src,destn,nmergs,correct = True):
 
                 cat1dir,cat2dir = np.random.choice(srcdir,2,replace = False)
                 while True:
-                    fname1 = np.random.choice(os.listdir(cat1dir)) 
+                    fname1 = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
                     path1 = os.path.join(cat1dir, fname1)
                     # select a random file from second cat
-                    fname2 = np.random.choice(os.listdir(cat2dir))
+                    fname2 = np.random.choice(os.listdir(cat2dir)).decode("utf-8") 
                     path2 = os.path.join(cat2dir, fname2)
                     if fname1 != '.DS_Store' and  fname2 != '.DS_Store':  
                         # Exclude unwanted files 
@@ -191,16 +187,12 @@ def sort_merged_imgs(data_path,
     os.makedirs(str(train_path + '/Female'),exist_ok=True)
     os.makedirs(str(train_path + '/Manmade'),exist_ok=True)
     os.makedirs(str(train_path + '/Natural'),exist_ok=True)
-    os.makedirs(str(train_path + '/Powered'),exist_ok=True)
-    os.makedirs(str(train_path + '/Nonpowered'),exist_ok=True)
     os.makedirs(str(train_path + '/Male'),exist_ok=True)
     
     os.makedirs(test_path,exist_ok=True)
     os.makedirs(test_path + '/Female',exist_ok=True)
     os.makedirs(test_path + '/Manmade',exist_ok=True)
     os.makedirs(test_path + '/Natural',exist_ok=True)
-    os.makedirs(test_path + '/Powered',exist_ok=True)
-    os.makedirs(test_path + '/Nonpowered',exist_ok=True)
     os.makedirs(test_path + '/Male',exist_ok=True)
     
     savepaths1 = []
@@ -227,6 +219,8 @@ def sort_merged_imgs(data_path,
                 shutil.copyfile(os.path.join(dirpath,tt),os.path.join(savepaths2[i],tt))
         i += 1
 
+        
+        
 def sort_reg_imgs(data_path,
               train_path,
               test_path,
@@ -246,16 +240,12 @@ def sort_reg_imgs(data_path,
     os.makedirs(str(train_path + '/Female'),exist_ok=True)
     os.makedirs(str(train_path + '/Manmade'),exist_ok=True)
     os.makedirs(str(train_path + '/Natural'),exist_ok=True)
-    os.makedirs(str(train_path + '/Powered'),exist_ok=True)
-    os.makedirs(str(train_path + '/Nonpowered'),exist_ok=True)
     os.makedirs(str(train_path + '/Male'),exist_ok=True)
     
     os.makedirs(test_path,exist_ok=True)
     os.makedirs(test_path + '/Female',exist_ok=True)
     os.makedirs(test_path + '/Manmade',exist_ok=True)
     os.makedirs(test_path + '/Natural',exist_ok=True)
-    os.makedirs(test_path + '/Powered',exist_ok=True)
-    os.makedirs(test_path + '/Nonpowered',exist_ok=True)
     os.makedirs(test_path + '/Male',exist_ok=True)
     
     savepaths1 = []
@@ -289,13 +279,13 @@ def sort_reg_imgs(data_path,
                 srcdir.append(dpath)
 
         i = -1
-        for cat in range(6):
+        for cat in range(4):
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(train_path,tail_path)
-            for img in range(n_train):
+            for img in range(35):
                 cat1dir = np.random.choice(srcdir)
-                file = np.random.choice(os.listdir(cat1dir))
+                file = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
                 shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
 
             i += 1
@@ -303,16 +293,16 @@ def sort_reg_imgs(data_path,
             print(cat)
         
         i = -1
-        for cat in range(6):
+        for cat in range(4):
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(test_path,tail_path)
             for img in range(n_test):
                 cat1dir = np.random.choice(srcdir)
-                file = np.random.choice(os.listdir(cat1dir))
+                file = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
                 shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
 
             i += 1
             srcdir.insert(cat, temp1)
             print(cat)
-            
+
