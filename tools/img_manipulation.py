@@ -80,10 +80,11 @@ def generate_merged(src,destn,nmergs,correct = True):
         destn = destn + '/Incorrect/'
 
     dirs = []
-    for dirname,_,_ in os.walk(src):
-      dirs.append(dirname)
-    dirs = [dirs[i] for i in [2,3,5,6]] # extract the required sublcass dirs
-    savestrs = ['Natural','Manmade','Male','Female']
+    for dirname,_,f in os.walk(src):
+      if len(f)>1:
+        dirs.append(dirname)
+    dirs = [dirs[i] for i in [0,1,2,3]] # extract the required sublcass dirs
+    savestrs = ['Male','Female','Manmade','Natural']
     #savestrs is positioned according to dirs
 
     cats = np.arange(0,4)
@@ -101,6 +102,7 @@ def generate_merged(src,destn,nmergs,correct = True):
               path2 = os.path.join(dirs[other_cat], fname2)
               if fname1 != '.DS_Store' and  fname2 != '.DS_Store':  # Exclude unwanted files 
                 break
+
             oly = overlay(path1,path2) # generate the overlay
             filepath = str(os.path.join(destn,savestrs[cat]) + '/' +
                            savestrs[cat] + '_' + str(img+1) + '.jpg')
@@ -112,7 +114,7 @@ def generate_merged(src,destn,nmergs,correct = True):
         for dpath,_,f in os.walk(src):
             if len(f) > 1:
                 srcdir.append(dpath)
-    
+        srcdir = [srcdir[i] for i in [0,1,2,3]]
         for cat in range(4):
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
@@ -144,8 +146,8 @@ def sort_merged_imgs(data_path,
               train_path,
               test_path,
               correct,
-              n_train = 75,
-              n_test = 15):
+              n_train = 80,
+              n_test = 40):
     """
     
 
@@ -225,8 +227,8 @@ def sort_reg_imgs(data_path,
               train_path,
               test_path,
               correct,
-              n_train = 75,
-              n_test = 15):
+              n_train = 80,
+              n_test = 40):
 
     
     if correct == True:
@@ -264,7 +266,6 @@ def sort_reg_imgs(data_path,
             if n > 1:
                 file_set = files
                 np.random.permutation(file_set)
-                print(len(file_set))
                 train = file_set[0:n_train] #Selecting correct images
                 test = file_set[n_train:n_train+n_test] #Selecting correct images
                 for tr in train:
@@ -283,14 +284,15 @@ def sort_reg_imgs(data_path,
             temp1 = srcdir.pop(cat)
             tail_path = os.path.split(temp1)[1]
             wdir = os.path.join(train_path,tail_path)
-            for img in range(35):
+            for img in range(n_train):
                 cat1dir = np.random.choice(srcdir)
-                file = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
-                shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
+                fil = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
+
+                shutil.copyfile(os.path.join(cat1dir,fil),os.path.join(wdir,fil))
 
             i += 1
             srcdir.insert(cat, temp1)
-            print(cat)
+            
         
         i = -1
         for cat in range(4):
@@ -299,10 +301,9 @@ def sort_reg_imgs(data_path,
             wdir = os.path.join(test_path,tail_path)
             for img in range(n_test):
                 cat1dir = np.random.choice(srcdir)
-                file = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
-                shutil.copyfile(os.path.join(cat1dir,file),os.path.join(wdir,file))
+                fil = np.random.choice(os.listdir(cat1dir)).decode("utf-8") 
+                shutil.copyfile(os.path.join(cat1dir,fil),os.path.join(wdir,fil))
 
             i += 1
             srcdir.insert(cat, temp1)
-            print(cat)
 
